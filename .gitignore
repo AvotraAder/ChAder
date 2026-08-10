@@ -1,0 +1,45 @@
+# Built objects
+bin/
+gen/
+out/
+build/
+.gradle/
+
+# Android Studio / IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Local configuration
+local.properties
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Log files
+*.log
+
+# Signing files
+*.jks
+*.keystore
+*.pk8
+*.pem
+
+# Bundletool
+*.apks
+
+# Crashlytics
+com_crashlytics_export_strings.xml
+crashlytics.properties
+crashlytics-build.properties
+
+# Google Services
+google-services.json
+
+# Screenshots
+screenshots/

@@ -1,0 +1,4 @@
+<resources>
+
+    <style name="Theme.ChAder" parent="Theme.MaterialComponents.Light" />
+</resources>
