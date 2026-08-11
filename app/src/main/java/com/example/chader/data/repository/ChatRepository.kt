@@ -142,16 +142,53 @@ class ChatRepository(private val chatDao: ChatDao) {
         chatDao.insertMessage(message.copy(content = content))
     }
 
+    suspend fun markMessagesAsReceived(chatId: String, myEmail: String) {
+        try {
+            val chatRef = firestore.collection("chats").document(chatId)
+            val messagesRef = chatRef.collection("messages")
+            
+            // Get messages that are still in "SENT" status
+            val sentMessages = messagesRef
+                .whereEqualTo("status", "SENT")
+                .get()
+                .await()
+            
+            if (sentMessages.isEmpty) return
+
+            val chatDoc = chatRef.get().await()
+            val lastMessageId = chatDoc.getString("lastMessageId")
+
+            firestore.runBatch { batch ->
+                var lastMessageUpdated = false
+                sentMessages.documents.forEach { doc ->
+                    val senderId = doc.getString("senderId")
+                    // Only mark as RECEIVED if I am the receiver
+                    if (senderId != myEmail) {
+                        batch.update(doc.reference, "status", "RECEIVED")
+                        if (doc.id == lastMessageId) {
+                            lastMessageUpdated = true
+                        }
+                    }
+                }
+                
+                if (lastMessageUpdated) {
+                    batch.update(chatRef, "lastMessageStatus", "RECEIVED")
+                }
+            }.await()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     suspend fun markMessagesAsSeen(chatId: String, myEmail: String) {
         try {
             val chatRef = firestore.collection("chats").document(chatId)
             val messagesRef = chatRef.collection("messages")
             
-            // Get messages not sent by me that are not yet SEEN
-            val unseenMessages = messagesRef
-                .whereNotEqualTo("senderId", myEmail)
-                .get()
-                .await()
+            // Get messages that are not yet SEEN
+            // To avoid complex indices, we get all messages and filter locally or use status
+            // Usually, only SENT and RECEIVED messages need to be marked as SEEN
+            val messagesToMark = messagesRef.get().await()
             
             val chatDoc = chatRef.get().await()
             val currentLastMessageStatus = chatDoc.getString("lastMessageStatus")
@@ -160,9 +197,10 @@ class ChatRepository(private val chatDao: ChatDao) {
             firestore.runBatch { batch ->
                 var updatedCount = 0
                 
-                unseenMessages.documents.forEach { doc ->
+                messagesToMark.documents.forEach { doc ->
                     val status = doc.getString("status")
-                    if (status != "SEEN") {
+                    val senderId = doc.getString("senderId")
+                    if (senderId != myEmail && status != "SEEN") {
                         batch.update(doc.reference, "status", "SEEN")
                         updatedCount++
                     }

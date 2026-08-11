@@ -45,7 +45,10 @@ fun ChatScreen(
     // Mark messages as seen when entering the chat or receiving new ones
     LaunchedEffect(messages) {
         if (messages.isNotEmpty()) {
-            viewModel.markAsSeen(chatId, myEmail)
+            val hasUnseen = messages.any { it.senderId != myEmail && it.status != "SEEN" }
+            if (hasUnseen) {
+                viewModel.markAsSeen(chatId, myEmail)
+            }
         }
     }
     

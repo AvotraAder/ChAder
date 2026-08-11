@@ -34,6 +34,12 @@ class ChatViewModel(private val repository: ChatRepository) : ViewModel() {
     
     fun getMessages(chatId: String): Flow<List<Message>> = repository.syncMessages(chatId)
 
+    fun markAsReceived(chatId: String, myEmail: String) {
+        viewModelScope.launch {
+            repository.markMessagesAsReceived(chatId, myEmail)
+        }
+    }
+
     fun markAsSeen(chatId: String, myEmail: String) {
         viewModelScope.launch {
             repository.markMessagesAsSeen(chatId, myEmail)

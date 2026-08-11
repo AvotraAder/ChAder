@@ -43,6 +43,15 @@ fun HomeScreen(
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     
+    // Mark incoming messages as RECEIVED when the chat list is viewed
+    LaunchedEffect(chats) {
+        chats.forEach { chat ->
+            if (chat.lastMessageSenderId != myEmail && chat.lastMessageStatus == "SENT") {
+                viewModel.markAsReceived(chat.id, myEmail)
+            }
+        }
+    }
+    
     val currentUser = users.find { it.email == myEmail }
     
     LaunchedEffect(myEmail) {
@@ -328,7 +337,7 @@ fun HomeScreen(
                                 )
                             },
                             trailingContent = {
-                                if (chat.unreadCount > 0) {
+                                if (chat.unreadCount > 0 && chat.lastMessageSenderId != myEmail) {
                                     Badge(containerColor = MaterialTheme.colorScheme.primary) {
                                         Text(chat.unreadCount.toString())
                                     }
