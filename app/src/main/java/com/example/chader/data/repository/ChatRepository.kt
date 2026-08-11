@@ -7,6 +7,7 @@ import com.example.chader.data.model.User
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.example.chader.util.EncryptionUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -38,11 +39,21 @@ class ChatRepository(private val chatDao: ChatDao) {
                     return@addSnapshotListener
                 }
                 val chats = snapshot?.toObjects(Chat::class.java) ?: emptyList()
-                // Update local cache
-                repositoryScope.launch {
-                    chats.forEach { chatDao.insertChat(it) }
+                
+                // Decrypt last message for local storage and display
+                val decryptedChats = chats.map { chat ->
+                    chat.copy(
+                        lastMessageContent = chat.lastMessageContent?.let { 
+                            EncryptionUtils.decrypt(it, chat.id) 
+                        }
+                    )
                 }
-                trySend(chats)
+
+                // Update local cache (stores decrypted content)
+                repositoryScope.launch {
+                    decryptedChats.forEach { chatDao.insertChat(it) }
+                }
+                trySend(decryptedChats)
             }
         awaitClose { listener.remove() }
     }
@@ -64,7 +75,7 @@ class ChatRepository(private val chatDao: ChatDao) {
         awaitClose { listener.remove() }
     }
 
-    // Remote Sync (Madagascar to the World)
+    // Remote Sync
     fun syncMessages(chatId: String): Flow<List<Message>> = callbackFlow {
         val listener = firestore.collection("chats")
             .document(chatId)
@@ -76,19 +87,35 @@ class ChatRepository(private val chatDao: ChatDao) {
                     return@addSnapshotListener
                 }
                 val messages = snapshot?.toObjects(Message::class.java) ?: emptyList()
-                trySend(messages)
+                
+                // Decrypt messages content
+                val decryptedMessages = messages.map { 
+                    it.copy(content = EncryptionUtils.decrypt(it.content, chatId)) 
+                }
+
+                // Update local cache (optional but recommended)
+                repositoryScope.launch {
+                    decryptedMessages.forEach { chatDao.insertMessage(it) }
+                }
+
+                trySend(decryptedMessages)
             }
         awaitClose { listener.remove() }
     }
 
     suspend fun sendMessage(chatId: String, content: String) {
         val userEmail = auth.currentUser?.email ?: "unknown"
+        
+        // Encrypt message content for Firestore
+        val encryptedContent = EncryptionUtils.encrypt(content, chatId)
+        
         val message = Message(
             id = UUID.randomUUID().toString(),
             chatId = chatId,
             senderId = userEmail,
-            content = content,
-            timestamp = System.currentTimeMillis()
+            content = encryptedContent,
+            timestamp = System.currentTimeMillis(),
+            status = com.example.chader.data.model.MessageStatus.SENT
         )
         
         // Save message to Firestore sub-collection
@@ -97,21 +124,88 @@ class ChatRepository(private val chatDao: ChatDao) {
         
         firestore.runBatch { batch ->
             batch.set(messageRef, message)
-            // Update the chat document with last message info for the list view
+            // Update the chat document with last message info and increment unread count
             batch.update(chatRef, mapOf(
                 "lastMessageId" to message.id,
-                "lastMessageContent" to message.content,
-                "lastMessageTimestamp" to message.timestamp
+                "lastMessageContent" to encryptedContent,
+                "lastMessageTimestamp" to message.timestamp,
+                "lastMessageSenderId" to message.senderId,
+                "unreadCount" to com.google.firebase.firestore.FieldValue.increment(1)
             ))
         }.await()
 
-        // Also cache locally
-        chatDao.insertMessage(message)
+        // Cache locally as PLAIN TEXT for easier reading/searching
+        chatDao.insertMessage(message.copy(content = content))
+    }
+
+    suspend fun markMessagesAsSeen(chatId: String, myEmail: String) {
+        try {
+            val messagesRef = firestore.collection("chats").document(chatId).collection("messages")
+            val unseenMessages = messagesRef
+                .whereNotEqualTo("senderId", myEmail)
+                .get()
+                .await()
+            
+            firestore.runBatch { batch ->
+                var updatedCount = 0
+                unseenMessages.documents.forEach { doc ->
+                    val status = doc.getString("status")
+                    if (status != "SEEN") {
+                        batch.update(doc.reference, "status", "SEEN")
+                        updatedCount++
+                    }
+                }
+                
+                // Reset unread count in the main chat document if we found unseen messages
+                if (updatedCount > 0) {
+                    batch.update(firestore.collection("chats").document(chatId), "unreadCount", 0)
+                }
+            }.await()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     suspend fun createOrUpdateUser(user: User) {
         firestore.collection("users").document(user.id).set(user).await()
         chatDao.insertUser(user)
+    }
+
+    suspend fun updateUsername(userId: String, newUsername: String): Result<Unit> {
+        val trimmedUsername = newUsername.trim().lowercase().removePrefix("@")
+        
+        if (trimmedUsername.isEmpty()) {
+            return Result.failure(Exception("Le pseudo ne peut pas être vide"))
+        }
+        
+        if (!trimmedUsername.matches(Regex("^[a-z0-9_]{3,20}$"))) {
+            return Result.failure(Exception("Le pseudo doit contenir entre 3 et 20 caractères (lettres, chiffres, _)"))
+        }
+
+        return try {
+            // Check if username is already taken
+            val existing = firestore.collection("users")
+                .whereEqualTo("username", trimmedUsername)
+                .get()
+                .await()
+            
+            val alreadyTaken = existing.documents.any { it.id != userId }
+            if (alreadyTaken) {
+                return Result.failure(Exception("Ce pseudo est déjà utilisé par un autre utilisateur"))
+            }
+
+            firestore.collection("users").document(userId)
+                .update("username", trimmedUsername)
+                .await()
+            
+            // Update local cache for immediate feedback
+            chatDao.getUserById(userId)?.let { user ->
+                chatDao.insertUser(user.copy(username = trimmedUsername))
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     suspend fun getUserByEmailOrUsername(query: String): User? {

@@ -201,6 +201,7 @@ fun ChAderApp(
         entry(ProfileRoute) {
             ProfileScreen(
                 session = userSession,
+                viewModel = chatViewModel,
                 onBack = { backStack.removeAt(backStack.lastIndex) },
                 onLogout = {
                     scope.launch {

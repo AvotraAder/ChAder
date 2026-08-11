@@ -8,13 +8,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.example.chader.data.model.Message
+import com.example.chader.data.model.MessageStatus
 import com.example.chader.ui.viewmodel.ChatViewModel
 
 import java.text.SimpleDateFormat
@@ -30,6 +35,19 @@ fun ChatScreen(
     onBack: () -> Unit
 ) {
     val messages by viewModel.getMessages(chatId).collectAsState(initial = emptyList())
+    val users by viewModel.users.collectAsState()
+    val otherUser = remember(users, chatId, myEmail) {
+        val otherEmail = chatId.split("_").find { it != myEmail }
+        users.find { it.email == otherEmail }
+    }
+    
+    // Mark messages as seen when entering the chat or receiving new ones
+    LaunchedEffect(messages) {
+        if (messages.isNotEmpty()) {
+            viewModel.markAsSeen(chatId, myEmail)
+        }
+    }
+    
     var textState by remember { mutableStateOf("") }
 
     Scaffold(
@@ -37,8 +55,12 @@ fun ChatScreen(
         topBar = {
             TopAppBar(
                 title = { 
-                    val otherUserEmail = chatId.split("_").find { it != myEmail } ?: chatId
-                    Text(otherUserEmail) 
+                    val displayName = when {
+                        otherUser?.username?.isNotEmpty() == true -> "@${otherUser.username}"
+                        otherUser?.name?.isNotEmpty() == true -> otherUser.name
+                        else -> chatId.split("_").find { it != myEmail } ?: "Chat"
+                    }
+                    Text(displayName)
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -119,13 +141,40 @@ fun MessageBubble(message: Message, isMe: Boolean) {
                 .padding(12.dp)
         ) {
             Text(text = message.content, color = textColor)
-            val time = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(message.timestamp))
-            Text(
-                text = time,
-                style = MaterialTheme.typography.labelSmall,
-                color = textColor.copy(alpha = 0.7f),
-                modifier = Modifier.align(Alignment.End)
-            )
+            Row(
+                modifier = Modifier.align(Alignment.End),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                val time = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(message.timestamp))
+                Text(
+                    text = time,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = textColor.copy(alpha = 0.7f)
+                )
+                if (isMe) {
+                    val statusIcon = when (message.status) {
+                        MessageStatus.SENDING -> null
+                        MessageStatus.SENT -> Icons.Default.Done
+                        MessageStatus.RECEIVED -> Icons.Default.DoneAll
+                        MessageStatus.SEEN -> Icons.Default.DoneAll
+                    }
+                    val statusTint = if (message.status == MessageStatus.SEEN) {
+                        Color.Cyan // Or a bright blue for seen
+                    } else {
+                        textColor.copy(alpha = 0.5f)
+                    }
+
+                    if (statusIcon != null) {
+                        Icon(
+                            imageVector = statusIcon,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = statusTint
+                        )
+                    }
+                }
+            }
         }
     }
 }

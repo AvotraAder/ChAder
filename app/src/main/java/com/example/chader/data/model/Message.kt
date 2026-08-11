@@ -12,10 +12,16 @@ data class Message(
     val senderId: String = "",
     val content: String = "",
     val timestamp: Long = 0L,
-    val type: MessageType = MessageType.TEXT
+    val type: MessageType = MessageType.TEXT,
+    val status: MessageStatus = MessageStatus.SENT
 )
 
 @Serializable
 enum class MessageType {
     TEXT, IMAGE, VIDEO, VOICE
+}
+
+@Serializable
+enum class MessageStatus {
+    SENDING, SENT, RECEIVED, SEEN
 }

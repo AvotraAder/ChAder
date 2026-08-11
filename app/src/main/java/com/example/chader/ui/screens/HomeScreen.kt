@@ -140,15 +140,43 @@ fun HomeScreen(
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
+                    if (currentUser?.username?.isNotEmpty() == true) {
+                        Text(
+                            text = "@${currentUser.username}",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Medium
+                        )
+                    } else {
+                        Text(
+                            text = "Définir un pseudo",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier.clickable { 
+                                scope.launch { drawerState.close() }
+                                onProfileClick() 
+                            }
+                        )
+                    }
                     Text(
                         text = myEmail,
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                 
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.Chat, contentDescription = null) },
+                    label = { Text("Messages") },
+                    selected = true,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                    },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                )
+
                 NavigationDrawerItem(
                     icon = { Icon(Icons.Default.Person, contentDescription = null) },
                     label = { Text("Profile") },
@@ -234,15 +262,33 @@ fun HomeScreen(
                     items(chats) { chat ->
                         val otherUserId = chat.participantIds.find { it != myEmail }
                         val otherUser = users.find { it.email == otherUserId }
+                        val displayName = when {
+                            otherUser?.username?.isNotEmpty() == true -> "@${otherUser.username}"
+                            otherUser?.name?.isNotEmpty() == true -> otherUser.name
+                            else -> otherUserId ?: "Unknown User"
+                        }
                         
                         ListItem(
-                            headlineContent = { Text(otherUser?.name ?: "Unknown User", fontWeight = FontWeight.SemiBold) },
+                            headlineContent = { Text(displayName, fontWeight = FontWeight.SemiBold) },
                             supportingContent = { 
+                                val prefix = when {
+                                    chat.lastMessageSenderId == null -> ""
+                                    chat.lastMessageSenderId == myEmail -> "Vous : "
+                                    else -> {
+                                        val sender = users.find { it.email == chat.lastMessageSenderId }
+                                        if (sender?.username?.isNotEmpty() == true) "${sender.username} : "
+                                        else if (sender?.name?.isNotEmpty() == true) "${sender.name} : "
+                                        else ""
+                                    }
+                                }
+                                val isUnread = chat.unreadCount > 0 && chat.lastMessageSenderId != myEmail
                                 Text(
-                                    chat.lastMessageContent ?: otherUser?.status ?: "No messages yet", 
+                                    text = "$prefix${chat.lastMessageContent ?: otherUser?.status ?: "Pas encore de messages"}",
                                     maxLines = 1,
-                                    color = if (chat.lastMessageContent != null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.outline
-                                ) 
+                                    color = if (isUnread) MaterialTheme.colorScheme.onSurface else if (chat.lastMessageContent != null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.outline,
+                                    fontWeight = if (isUnread) FontWeight.Bold else FontWeight.Normal,
+                                    style = if (isUnread) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodySmall
+                                )
                             },
                             leadingContent = {
                                 AsyncImage(

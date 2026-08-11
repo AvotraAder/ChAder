@@ -34,9 +34,22 @@ class ChatViewModel(private val repository: ChatRepository) : ViewModel() {
     
     fun getMessages(chatId: String): Flow<List<Message>> = repository.syncMessages(chatId)
 
+    fun markAsSeen(chatId: String, myEmail: String) {
+        viewModelScope.launch {
+            repository.markMessagesAsSeen(chatId, myEmail)
+        }
+    }
+
     fun sendMessage(chatId: String, content: String) {
         viewModelScope.launch {
             repository.sendMessage(chatId, content)
+        }
+    }
+
+    fun updateUsername(userId: String, newUsername: String, onResult: (Result<Unit>) -> Unit) {
+        viewModelScope.launch {
+            val result = repository.updateUsername(userId, newUsername)
+            onResult(result)
         }
     }
 
