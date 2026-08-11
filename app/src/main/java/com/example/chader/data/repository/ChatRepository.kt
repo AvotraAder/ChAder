@@ -40,8 +40,11 @@ class ChatRepository(private val chatDao: ChatDao) {
                 }
                 val chats = snapshot?.toObjects(Chat::class.java) ?: emptyList()
                 
+                // Sort chats locally by last message timestamp (descending) to avoid requiring a composite index
+                val sortedChats = chats.sortedByDescending { it.lastMessageTimestamp ?: 0L }
+                
                 // Decrypt last message for local storage and display
-                val decryptedChats = chats.map { chat ->
+                val decryptedChats = sortedChats.map { chat ->
                     chat.copy(
                         lastMessageContent = chat.lastMessageContent?.let { 
                             EncryptionUtils.decrypt(it, chat.id) 
@@ -115,7 +118,7 @@ class ChatRepository(private val chatDao: ChatDao) {
             senderId = userEmail,
             content = encryptedContent,
             timestamp = System.currentTimeMillis(),
-            status = com.example.chader.data.model.MessageStatus.SENT
+            status = "SENT"
         )
         
         // Save message to Firestore sub-collection
@@ -130,6 +133,7 @@ class ChatRepository(private val chatDao: ChatDao) {
                 "lastMessageContent" to encryptedContent,
                 "lastMessageTimestamp" to message.timestamp,
                 "lastMessageSenderId" to message.senderId,
+                "lastMessageStatus" to "SENT",
                 "unreadCount" to com.google.firebase.firestore.FieldValue.increment(1)
             ))
         }.await()
@@ -140,14 +144,22 @@ class ChatRepository(private val chatDao: ChatDao) {
 
     suspend fun markMessagesAsSeen(chatId: String, myEmail: String) {
         try {
-            val messagesRef = firestore.collection("chats").document(chatId).collection("messages")
+            val chatRef = firestore.collection("chats").document(chatId)
+            val messagesRef = chatRef.collection("messages")
+            
+            // Get messages not sent by me that are not yet SEEN
             val unseenMessages = messagesRef
                 .whereNotEqualTo("senderId", myEmail)
                 .get()
                 .await()
             
+            val chatDoc = chatRef.get().await()
+            val currentLastMessageStatus = chatDoc.getString("lastMessageStatus")
+            val lastMessageSenderId = chatDoc.getString("lastMessageSenderId")
+
             firestore.runBatch { batch ->
                 var updatedCount = 0
+                
                 unseenMessages.documents.forEach { doc ->
                     val status = doc.getString("status")
                     if (status != "SEEN") {
@@ -156,9 +168,18 @@ class ChatRepository(private val chatDao: ChatDao) {
                     }
                 }
                 
-                // Reset unread count in the main chat document if we found unseen messages
-                if (updatedCount > 0) {
-                    batch.update(firestore.collection("chats").document(chatId), "unreadCount", 0)
+                val updates = mutableMapOf<String, Any>()
+                
+                // If I am the receiver and the last message is from the other person and not SEEN yet
+                if (lastMessageSenderId != myEmail && currentLastMessageStatus != "SEEN") {
+                    updates["lastMessageStatus"] = "SEEN"
+                    updates["unreadCount"] = 0
+                } else if (updatedCount > 0) {
+                    updates["unreadCount"] = 0
+                }
+                
+                if (updates.isNotEmpty()) {
+                    batch.update(chatRef, updates)
                 }
             }.await()
         } catch (e: Exception) {
@@ -172,24 +193,23 @@ class ChatRepository(private val chatDao: ChatDao) {
     }
 
     suspend fun updateUsername(userId: String, newUsername: String): Result<Unit> {
-        val trimmedUsername = newUsername.trim().lowercase().removePrefix("@")
+        val trimmedUsername = newUsername.trim().removePrefix("@")
         
         if (trimmedUsername.isEmpty()) {
             return Result.failure(Exception("Le pseudo ne peut pas être vide"))
         }
         
-        if (!trimmedUsername.matches(Regex("^[a-z0-9_]{3,20}$"))) {
+        if (!trimmedUsername.matches(Regex("^[a-zA-Z0-9_]{3,20}$"))) {
             return Result.failure(Exception("Le pseudo doit contenir entre 3 et 20 caractères (lettres, chiffres, _)"))
         }
 
         return try {
-            // Check if username is already taken
-            val existing = firestore.collection("users")
-                .whereEqualTo("username", trimmedUsername)
-                .get()
-                .await()
+            // Check if username is already taken (case-insensitive check is better for uniqueness)
+            val allUsers = firestore.collection("users").get().await()
+            val alreadyTaken = allUsers.documents.any { 
+                it.id != userId && it.getString("username")?.equals(trimmedUsername, ignoreCase = true) == true 
+            }
             
-            val alreadyTaken = existing.documents.any { it.id != userId }
             if (alreadyTaken) {
                 return Result.failure(Exception("Ce pseudo est déjà utilisé par un autre utilisateur"))
             }
@@ -209,46 +229,27 @@ class ChatRepository(private val chatDao: ChatDao) {
     }
 
     suspend fun getUserByEmailOrUsername(query: String): User? {
-        val trimmedQuery = query.trim().lowercase()
+        val trimmedQuery = query.trim()
         return try {
-            println("DEBUG: Firestore search start for: $trimmedQuery")
-            
-            // Search by email
+            // Search by email (still lowercase for email usually)
             val emailQuery = firestore.collection("users")
-                .whereEqualTo("email", trimmedQuery)
+                .whereEqualTo("email", trimmedQuery.lowercase())
                 .get()
                 .await()
             
-            println("DEBUG: Email search count: ${emailQuery.size()}")
             val byEmail = emailQuery.toObjects(User::class.java).firstOrNull()
-            
-            if (byEmail != null) {
-                println("DEBUG: Found by email: ${byEmail.email}")
-                return byEmail
-            }
+            if (byEmail != null) return byEmail
 
-            // Search by username
+            // Search by username (case-insensitive)
             val usernameToSearch = if (trimmedQuery.startsWith("@")) trimmedQuery.substring(1) else trimmedQuery
-            println("DEBUG: Searching for username: $usernameToSearch")
             
-            val usernameQuery = firestore.collection("users")
-                .whereEqualTo("username", usernameToSearch)
-                .get()
-                .await()
-                
-            println("DEBUG: Username search count: ${usernameQuery.size()}")
-            val byUsername = usernameQuery.toObjects(User::class.java).firstOrNull()
-            
-            if (byUsername == null) {
-                println("DEBUG: No user document found in Firestore 'users' collection for $trimmedQuery")
-            } else {
-                println("DEBUG: Found by username: ${byUsername.username}")
-            }
+            val allUsers = firestore.collection("users").get().await()
+            val byUsername = allUsers.documents.find { 
+                it.getString("username")?.equals(usernameToSearch, ignoreCase = true) == true 
+            }?.toObject(User::class.java)
             
             return byUsername
         } catch (e: Exception) {
-            println("DEBUG: Firestore ERROR: ${e.message}")
-            e.printStackTrace()
             null
         }
     }

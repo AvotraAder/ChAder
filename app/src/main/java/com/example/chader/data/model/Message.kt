@@ -13,8 +13,11 @@ data class Message(
     val content: String = "",
     val timestamp: Long = 0L,
     val type: MessageType = MessageType.TEXT,
-    val status: MessageStatus = MessageStatus.SENT
-)
+    val status: String = "SENT"
+) {
+    val messageStatus: MessageStatus
+        get() = try { enumValueOf<MessageStatus>(status) } catch (e: Exception) { MessageStatus.SENT }
+}
 
 @Serializable
 enum class MessageType {

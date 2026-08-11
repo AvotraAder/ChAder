@@ -131,7 +131,6 @@ fun ProfileScreen(
                         errorMessage = null
                     },
                     label = { Text("Username") },
-                    prefix = { Text("@") },
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                     singleLine = true,
                     isError = errorMessage != null,
@@ -146,7 +145,7 @@ fun ProfileScreen(
                 )
             } else {
                 Text(
-                    text = if (currentUser?.username?.isNotEmpty() == true) "@${currentUser.username}" else "Aucun pseudo défini",
+                    text = if (currentUser?.username?.isNotEmpty() == true) currentUser.username else "Aucun pseudo défini",
                     style = MaterialTheme.typography.titleMedium,
                     color = if (currentUser?.username?.isNotEmpty() == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
                     fontWeight = FontWeight.Medium

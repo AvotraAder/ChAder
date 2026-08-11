@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -49,6 +50,14 @@ fun ChatScreen(
     }
     
     var textState by remember { mutableStateOf("") }
+    val listState = rememberLazyListState()
+
+    // Scroll to bottom when new messages arrive
+    LaunchedEffect(messages.size) {
+        if (messages.isNotEmpty()) {
+            listState.animateScrollToItem(messages.size - 1)
+        }
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -56,7 +65,7 @@ fun ChatScreen(
             TopAppBar(
                 title = { 
                     val displayName = when {
-                        otherUser?.username?.isNotEmpty() == true -> "@${otherUser.username}"
+                        otherUser?.username?.isNotEmpty() == true -> otherUser.username
                         otherUser?.name?.isNotEmpty() == true -> otherUser.name
                         else -> chatId.split("_").find { it != myEmail } ?: "Chat"
                     }
@@ -107,6 +116,7 @@ fun ChatScreen(
         }
     ) { padding ->
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
@@ -154,12 +164,13 @@ fun MessageBubble(message: Message, isMe: Boolean) {
                 )
                 if (isMe) {
                     val statusIcon = when (message.status) {
-                        MessageStatus.SENDING -> null
-                        MessageStatus.SENT -> Icons.Default.Done
-                        MessageStatus.RECEIVED -> Icons.Default.DoneAll
-                        MessageStatus.SEEN -> Icons.Default.DoneAll
+                        "SENDING" -> null
+                        "SENT" -> Icons.Default.Done
+                        "RECEIVED" -> Icons.Default.DoneAll
+                        "SEEN" -> Icons.Default.DoneAll
+                        else -> null
                     }
-                    val statusTint = if (message.status == MessageStatus.SEEN) {
+                    val statusTint = if (message.status == "SEEN") {
                         Color.Cyan // Or a bright blue for seen
                     } else {
                         textColor.copy(alpha = 0.5f)

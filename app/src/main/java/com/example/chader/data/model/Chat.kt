@@ -13,5 +13,11 @@ data class Chat(
     val lastMessageContent: String? = null,
     val lastMessageTimestamp: Long? = null,
     val lastMessageSenderId: String? = null,
+    val lastMessageStatus: String? = null,
     val unreadCount: Int = 0
-)
+) {
+    val status: MessageStatus?
+        get() = lastMessageStatus?.let { 
+            try { enumValueOf<MessageStatus>(it) } catch (e: Exception) { null } 
+        }
+}

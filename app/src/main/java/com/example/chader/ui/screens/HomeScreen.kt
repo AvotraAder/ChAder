@@ -9,18 +9,23 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.chader.data.model.Chat
+import com.example.chader.data.model.MessageStatus
 import com.example.chader.ui.viewmodel.ChatViewModel
 import kotlinx.coroutines.launch
 
@@ -142,7 +147,7 @@ fun HomeScreen(
                     )
                     if (currentUser?.username?.isNotEmpty() == true) {
                         Text(
-                            text = "@${currentUser.username}",
+                            text = currentUser.username,
                             style = MaterialTheme.typography.titleSmall,
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Medium
@@ -263,7 +268,7 @@ fun HomeScreen(
                         val otherUserId = chat.participantIds.find { it != myEmail }
                         val otherUser = users.find { it.email == otherUserId }
                         val displayName = when {
-                            otherUser?.username?.isNotEmpty() == true -> "@${otherUser.username}"
+                            otherUser?.username?.isNotEmpty() == true -> otherUser.username
                             otherUser?.name?.isNotEmpty() == true -> otherUser.name
                             else -> otherUserId ?: "Unknown User"
                         }
@@ -282,13 +287,36 @@ fun HomeScreen(
                                     }
                                 }
                                 val isUnread = chat.unreadCount > 0 && chat.lastMessageSenderId != myEmail
-                                Text(
-                                    text = "$prefix${chat.lastMessageContent ?: otherUser?.status ?: "Pas encore de messages"}",
-                                    maxLines = 1,
-                                    color = if (isUnread) MaterialTheme.colorScheme.onSurface else if (chat.lastMessageContent != null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.outline,
-                                    fontWeight = if (isUnread) FontWeight.Bold else FontWeight.Normal,
-                                    style = if (isUnread) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodySmall
-                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    if (chat.lastMessageSenderId == myEmail) {
+                                        val statusIcon = when (chat.lastMessageStatus) {
+                                            "SENT" -> Icons.Default.Done
+                                            "RECEIVED", "SEEN" -> Icons.Default.DoneAll
+                                            else -> null
+                                        }
+                                        val statusTint = if (chat.lastMessageStatus == "SEEN") {
+                                            Color(0xFF00B2FF) // Blue for seen
+                                        } else {
+                                            MaterialTheme.colorScheme.outline
+                                        }
+
+                                        if (statusIcon != null) {
+                                            Icon(
+                                                imageVector = statusIcon,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(16.dp).padding(end = 4.dp),
+                                                tint = statusTint
+                                            )
+                                        }
+                                    }
+                                    Text(
+                                        text = "$prefix${chat.lastMessageContent ?: otherUser?.status ?: "Pas encore de messages"}",
+                                        maxLines = 1,
+                                        color = if (isUnread) MaterialTheme.colorScheme.onSurface else if (chat.lastMessageContent != null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.outline,
+                                        fontWeight = if (isUnread) FontWeight.Bold else FontWeight.Normal,
+                                        style = if (isUnread) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodySmall
+                                    )
+                                }
                             },
                             leadingContent = {
                                 AsyncImage(
