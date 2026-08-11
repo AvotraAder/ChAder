@@ -1,28 +1,28 @@
 # Project Plan
 
-A modern, responsive real-time chat application named 'ChAder'. Features include user login, stories (similar to Instagram/WhatsApp), and real-time messaging. The UI/UX should be modern and follow Material Design 3 guidelines. Modify the login flow to support only Email and Google Sign-In, removing the Signup requirement. Add .gitignore and README.md.
+Transition ChAder from a local prototype to a fully functional global messaging app. Implement real Google Sign-In via Credential Manager and real-time messaging via Firebase to allow communication between different countries (e.g., Madagascar to the world). Maintain the vibrant Material 3 design and adaptive UI.
 
 ## Project Brief
 
 # Project Brief: ChAder
 
-ChAder is a streamlined, responsive real-time chat application built with a focus on speed and modern aesthetics. Utilizing Material Design 3, the app provides a vibrant, energetic user experience that seamlessly adapts across various Android device form factors, from mobile phones to foldables and tablets.
+ChAder is a high-performance, real-time messaging application built to connect users globally with a vibrant, energetic aesthetic. Leveraging Material Design 3 and modern Android architecture, the app provides a seamless, adaptive experience that scales from compact handsets to large-screen foldables and tablets.
 
 ## Features
-*   **Simplified Authentication:** Quick and secure access via Email or Google Sign-In, eliminating the need for a traditional registration flow.
-*   **Real-Time Messaging:** Instantaneous text communication with a reactive UI that updates as messages arrive.
-*   **Stories:** A dedicated, visually-driven section for sharing ephemeral updates that disappear after 24 hours.
-*   **Adaptive Communication Hub:** A dynamic interface using multi-pane layouts to provide an optimized viewing experience on both small and large screens.
+*   **Modern Unified Authentication:** Streamlined access via Email or Google Sign-In using the **Credential Manager API**, providing a secure, no-signup-required onboarding experience.
+*   **Global Real-Time Messaging:** Instant, cross-border communication powered by a cloud-based backend, ensuring low-latency delivery between different countries (e.g., Madagascar to the world).
+*   **Ephemeral Stories:** A visually rich space for sharing time-sensitive updates and media that disappear after 24 hours.
+*   **Adaptive Material 3 Interface:** A fully responsive UI utilizing multi-pane layouts to provide an optimized experience across all device form factors and orientations.
 
 ## High-Level Technical Stack
 *   **Language:** Kotlin
-*   **UI Framework:** Jetpack Compose with Material Design 3 (energetic color scheme)
-*   **Navigation:** Jetpack Navigation 3 (State-driven navigation logic)
-*   **Adaptive Strategy:** Compose Material Adaptive library for responsive, multi-pane layouts.
-*   **Authentication:** Google Sign-In API for streamlined user onboarding.
-*   **Concurrency:** Kotlin Coroutines and Flow for handling real-time data streams.
-*   **Networking:** Retrofit and OkHttp for API communication.
-*   **Image Loading:** Coil for efficient rendering of user avatars and stories.
+*   **UI Framework:** Jetpack Compose with Material Design 3 (Full Edge-to-Edge support)
+*   **Navigation:** Jetpack Navigation 3 (State-driven approach)
+*   **Adaptive Strategy:** Compose Material Adaptive library for intelligent multi-pane layout management.
+*   **Authentication:** Credential Manager API (supporting Google Sign-In and modern passkeys/credentials).
+*   **Real-Time Backend:** Firebase (Authentication and Realtime Database/Firestore) for international synchronization.
+*   **Concurrency:** Kotlin Coroutines and Flow for reactive, asynchronous data handling.
+*   **Image Loading:** Coil for efficient rendering of media in Stories and user profiles.
 
 ## Implementation Steps
 **Total Duration:** 45m 59s
@@ -103,4 +103,21 @@ ChAder is a streamlined, responsive real-time chat application built with a focu
   - All existing tests pass
   - Build passes
 - **Duration:** 2m 6s
+
+### Task_9_Transition_to_Global_Backend: Integrate Firebase for global real-time messaging and refactor authentication to use the modern Credential Manager API for a seamless Google Sign-In experience.
+- **Status:** IN_PROGRESS
+- **Acceptance Criteria:**
+  - Firebase Authentication and Realtime Database/Firestore integrated
+  - Credential Manager API implemented for Google Sign-In
+  - Prototype local messaging replaced with global cloud synchronization
+  - google-services.json correctly integrated
+- **StartTime:** 2026-08-10 23:53:38 EAT
+
+### Task_10_Final_Global_Verification: Perform a final end-to-end verification of the global messaging capabilities and authentication flow to ensure stability and Material 3 design fidelity.
+- **Status:** PENDING
+- **Acceptance Criteria:**
+  - Real-time global messaging verified between different sessions
+  - Authentication via Credential Manager works as expected
+  - Application remains stable (no crashes) and follows Material Design 3 guidelines
+  - Build passes and all existing tests pass
 

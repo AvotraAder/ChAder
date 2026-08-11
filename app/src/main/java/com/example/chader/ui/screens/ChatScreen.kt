@@ -2,7 +2,6 @@ package com.example.chader.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,16 +13,20 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.example.chader.data.model.Message
 import com.example.chader.ui.viewmodel.ChatViewModel
+
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
     chatId: String,
     viewModel: ChatViewModel,
+    myEmail: String,
     onBack: () -> Unit
 ) {
     val messages by viewModel.getMessages(chatId).collectAsState(initial = emptyList())
@@ -33,7 +36,10 @@ fun ChatScreen(
         modifier = Modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text("Chat: $chatId") },
+                title = { 
+                    val otherUserEmail = chatId.split("_").find { it != myEmail } ?: chatId
+                    Text(otherUserEmail) 
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -63,7 +69,7 @@ fun ChatScreen(
                     IconButton(
                         onClick = {
                             if (textState.isNotBlank()) {
-                                viewModel.sendMessage(chatId, "me", textState)
+                                viewModel.sendMessage(chatId, textState)
                                 textState = ""
                             }
                         },
@@ -87,7 +93,7 @@ fun ChatScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(messages) { message ->
-                MessageBubble(message = message, isMe = message.senderId == "me")
+                MessageBubble(message = message, isMe = message.senderId == myEmail)
             }
         }
     }
@@ -113,6 +119,13 @@ fun MessageBubble(message: Message, isMe: Boolean) {
                 .padding(12.dp)
         ) {
             Text(text = message.content, color = textColor)
+            val time = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(message.timestamp))
+            Text(
+                text = time,
+                style = MaterialTheme.typography.labelSmall,
+                color = textColor.copy(alpha = 0.7f),
+                modifier = Modifier.align(Alignment.End)
+            )
         }
     }
 }

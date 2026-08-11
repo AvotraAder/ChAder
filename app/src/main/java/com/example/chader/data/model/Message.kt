@@ -7,11 +7,11 @@ import kotlinx.serialization.Serializable
 @Serializable
 @Entity(tableName = "messages")
 data class Message(
-    @PrimaryKey val id: String,
-    val chatId: String,
-    val senderId: String,
-    val content: String,
-    val timestamp: Long,
+    @PrimaryKey val id: String = "",
+    val chatId: String = "",
+    val senderId: String = "",
+    val content: String = "",
+    val timestamp: Long = 0L,
     val type: MessageType = MessageType.TEXT
 )
 

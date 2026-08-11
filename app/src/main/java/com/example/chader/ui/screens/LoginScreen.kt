@@ -18,7 +18,8 @@ import com.example.chader.ui.theme.ChAderTheme
 
 @Composable
 fun LoginScreen(
-    onLoginSuccess: () -> Unit
+    onLoginSuccess: (String, String, String) -> Unit,
+    onGoogleSignInClick: () -> Unit
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -70,8 +71,18 @@ fun LoginScreen(
             )
             Spacer(modifier = Modifier.height(32.dp))
 
+            var isLoading by remember { mutableStateOf(false) }
+
+            if (isLoading) {
+                CircularProgressIndicator(modifier = Modifier.padding(16.dp))
+            }
+
             Button(
-                onClick = onLoginSuccess,
+                onClick = { 
+                    isLoading = true
+                    onLoginSuccess(email, "id_dummy", email.split("@")[0]) 
+                },
+                enabled = !isLoading,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
@@ -99,7 +110,11 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             OutlinedButton(
-                onClick = onLoginSuccess, // Simulating Google Sign-In success
+                onClick = {
+                    isLoading = true
+                    onGoogleSignInClick()
+                },
+                enabled = !isLoading,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
@@ -108,14 +123,21 @@ fun LoginScreen(
                     brush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.outlineVariant)
                 )
             ) {
-                // Using a generic icon representation for Google Sign-In
                 Icon(
-                    imageVector = Icons.Default.Email, // Placeholder for Google Icon if not in default icons
+                    imageVector = Icons.Default.Email, 
                     contentDescription = null,
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Sign in with Google", style = MaterialTheme.typography.titleMedium)
+            }
+
+            // Reset loading if we are still on this screen (errors)
+            LaunchedEffect(isLoading) {
+                if (isLoading) {
+                    kotlinx.coroutines.delay(5000)
+                    isLoading = false
+                }
             }
         }
     }
@@ -125,6 +147,6 @@ fun LoginScreen(
 @Composable
 fun LoginScreenPreview() {
     ChAderTheme {
-        LoginScreen(onLoginSuccess = {})
+        LoginScreen(onLoginSuccess = { _, _, _ -> }, onGoogleSignInClick = {})
     }
 }

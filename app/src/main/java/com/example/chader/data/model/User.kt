@@ -7,9 +7,11 @@ import kotlinx.serialization.Serializable
 @Serializable
 @Entity(tableName = "users")
 data class User(
-    @PrimaryKey val id: String,
-    val name: String,
-    val avatarUrl: String?,
+    @PrimaryKey val id: String = "",
+    val name: String = "",
+    val email: String = "",
+    val username: String = "",
+    val avatarUrl: String? = null,
     val status: String? = null,
     val lastSeen: Long = System.currentTimeMillis()
 )

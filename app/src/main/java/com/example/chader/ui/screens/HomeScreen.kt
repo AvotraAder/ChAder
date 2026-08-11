@@ -8,96 +8,263 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.chader.data.model.Chat
-import com.example.chader.ui.components.StoryReel
 import com.example.chader.ui.viewmodel.ChatViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     viewModel: ChatViewModel,
+    myEmail: String,
     onChatClick: (String) -> Unit,
-    onStoryClick: (String) -> Unit
+    onProfileClick: () -> Unit,
+    onLogoutClick: () -> Unit
 ) {
-    val chats by viewModel.chats.collectAsState(initial = emptyList())
-    val stories by viewModel.stories.collectAsState(initial = emptyList())
-    val users by viewModel.users.collectAsState(initial = emptyList())
+    val chats by viewModel.chats.collectAsStateWithLifecycle()
+    val users by viewModel.users.collectAsStateWithLifecycle()
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+    
+    val currentUser = users.find { it.email == myEmail }
+    
+    LaunchedEffect(myEmail) {
+        viewModel.setMyEmail(myEmail)
+    }
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        topBar = {
-            TopAppBar(
-                title = { 
+    var showDialog by remember { mutableStateOf(false) }
+    var emailInput by remember { mutableStateOf("") }
+
+    if (showDialog) {
+        var isSearching by remember { mutableStateOf(false) }
+        var errorMessage by remember { mutableStateOf<String?>(null) }
+
+        AlertDialog(
+            onDismissRequest = { if (!isSearching) showDialog = false },
+            title = { Text("New Chat") },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = emailInput,
+                        onValueChange = { 
+                            emailInput = it 
+                            errorMessage = null
+                        },
+                        label = { Text("Email or Username") },
+                        placeholder = { Text("friend@example.com or @pseudo") },
+                        isError = errorMessage != null,
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isSearching
+                    )
+                    if (errorMessage != null) {
+                        Text(
+                            text = errorMessage!!,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(start = 8.dp, top = 4.dp)
+                        )
+                    }
+                    if (isSearching) {
+                        LinearProgressIndicator(
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (emailInput.isBlank()) {
+                            errorMessage = "Please enter an email or username"
+                            return@Button
+                        }
+                        isSearching = true
+                        viewModel.startChatByQuery(emailInput, myEmail) { chatId ->
+                            isSearching = false
+                            if (chatId != null) {
+                                onChatClick(chatId)
+                                showDialog = false
+                                emailInput = ""
+                            } else {
+                                errorMessage = "User not found or connection error"
+                            }
+                        }
+                    },
+                    enabled = !isSearching
+                ) {
+                    Text("Start Chat")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showDialog = false },
+                    enabled = !isSearching
+                ) { Text("Cancel") }
+            }
+        )
+    }
+
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet {
+                Spacer(Modifier.height(12.dp))
+                // Drawer Header with User Info
+                Column(
+                    modifier = Modifier
+                        .padding(horizontal = 28.dp, vertical = 16.dp)
+                        .fillMaxWidth()
+                ) {
+                    AsyncImage(
+                        model = currentUser?.avatarUrl ?: "https://i.pravatar.cc/150",
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(64.dp)
+                            .clip(CircleShape)
+                    )
+                    Spacer(Modifier.height(12.dp))
                     Text(
-                        "ChAder", 
-                        style = MaterialTheme.typography.headlineMedium,
+                        text = currentUser?.name ?: "User",
+                        style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
-                    ) 
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = myEmail,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.Person, contentDescription = null) },
+                    label = { Text("Profile") },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        onProfileClick()
+                    },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { viewModel.seedDemoData() },
-                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-            ) {
-                Icon(Icons.Default.Chat, contentDescription = "New Chat")
+                
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.Settings, contentDescription = null) },
+                    label = { Text("Settings") },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        // Future settings logic
+                    },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                )
+                
+                Spacer(Modifier.weight(1f))
+                
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.ExitToApp, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                    label = { Text("Logout", color = MaterialTheme.colorScheme.error) },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        onLogoutClick()
+                    },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                )
+                Spacer(Modifier.height(12.dp))
             }
         }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .consumeWindowInsets(padding)
-        ) {
-            if (stories.isNotEmpty()) {
-                StoryReel(stories = stories, onStoryClick = onStoryClick)
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-            }
-            
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
-                items(chats) { chat ->
-                    val otherUserId = chat.participantIds.find { it != "me" }
-                    val otherUser = users.find { it.id == otherUserId }
-                    
-                    ListItem(
-                        headlineContent = { Text(otherUser?.name ?: "Unknown User", fontWeight = FontWeight.SemiBold) },
-                        supportingContent = { Text(otherUser?.status ?: "No status", maxLines = 1) },
-                        leadingContent = {
-                            AsyncImage(
-                                model = otherUser?.avatarUrl ?: "https://i.pravatar.cc/150",
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .size(56.dp)
-                                    .clip(CircleShape)
-                            )
-                        },
-                        trailingContent = {
-                            if (chat.unreadCount > 0) {
-                                Badge(containerColor = MaterialTheme.colorScheme.primary) {
-                                    Text(chat.unreadCount.toString())
-                                }
-                            }
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onChatClick(chat.id) }
+    ) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            topBar = {
+                TopAppBar(
+                    navigationIcon = {
+                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                            Icon(Icons.Default.Menu, contentDescription = "Menu")
+                        }
+                    },
+                    title = { 
+                        Text(
+                            "ChAder", 
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold
+                        ) 
+                    },
+                    actions = {
+                        IconButton(onClick = onProfileClick) {
+                            Icon(Icons.Default.Person, contentDescription = "Profile", tint = MaterialTheme.colorScheme.primary)
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background,
+                        titleContentColor = MaterialTheme.colorScheme.primary
                     )
+                )
+            },
+            floatingActionButton = {
+                FloatingActionButton(
+                    onClick = { showDialog = true },
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                ) {
+                    Icon(Icons.Default.Chat, contentDescription = "New Chat")
+                }
+            }
+        ) { padding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .consumeWindowInsets(padding)
+            ) {
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    items(chats) { chat ->
+                        val otherUserId = chat.participantIds.find { it != myEmail }
+                        val otherUser = users.find { it.email == otherUserId }
+                        
+                        ListItem(
+                            headlineContent = { Text(otherUser?.name ?: "Unknown User", fontWeight = FontWeight.SemiBold) },
+                            supportingContent = { 
+                                Text(
+                                    chat.lastMessageContent ?: otherUser?.status ?: "No messages yet", 
+                                    maxLines = 1,
+                                    color = if (chat.lastMessageContent != null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.outline
+                                ) 
+                            },
+                            leadingContent = {
+                                AsyncImage(
+                                    model = otherUser?.avatarUrl ?: "https://i.pravatar.cc/150",
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .size(56.dp)
+                                        .clip(CircleShape)
+                                )
+                            },
+                            trailingContent = {
+                                if (chat.unreadCount > 0) {
+                                    Badge(containerColor = MaterialTheme.colorScheme.primary) {
+                                        Text(chat.unreadCount.toString())
+                                    }
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onChatClick(chat.id) }
+                        )
+                    }
                 }
             }
         }

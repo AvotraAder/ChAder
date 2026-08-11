@@ -13,7 +13,7 @@ data object LoginRoute : ChAderRoute
 data object HomeRoute : ChAderRoute
 
 @Serializable
-data class ChatRoute(val chatId: String) : ChAderRoute
+data object ProfileRoute : ChAderRoute
 
 @Serializable
-data class StoryRoute(val storyId: String) : ChAderRoute
+data class ChatRoute(val chatId: String) : ChAderRoute
