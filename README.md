@@ -6,7 +6,7 @@ ChAder is a streamlined, responsive real-time chat application built with a focu
 
 *   **Simplified Authentication:** Quick and secure access via Email or Google Sign-In, eliminating the need for a traditional registration flow and streamlining the onboarding process.
 *   **Real-Time Messaging:** Instantaneous text communication with a reactive UI that updates as messages arrive, powered by Room and Kotlin Flow.
-*   **Stories:** A dedicated, visually-driven section for sharing ephemeral updates, featuring a vibrant gradient UI.
+*   **Stories:** A dedicated, visually-driven section for sharing ephemeral updates, featuring a vibrant gradient
 *   **Adaptive Communication Hub:** A dynamic interface using multi-pane layouts (`ListDetailPaneScaffold`) to provide an optimized viewing experience on both small and large screens.
 *   **Edge-to-Edge Experience:** Full support for modern Android display standards, utilizing the entire screen area while respecting system bars.
 
