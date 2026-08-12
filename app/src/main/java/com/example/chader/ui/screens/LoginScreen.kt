@@ -16,6 +16,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.chader.ui.theme.ChAderTheme
 
+import androidx.compose.ui.res.stringResource
+import com.example.chader.R
+
 @Composable
 fun LoginScreen(
     onLoginSuccess: (String, String, String) -> Unit,
@@ -44,7 +47,7 @@ fun LoginScreen(
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Connect with energy",
+                text = stringResource(R.string.connect_energy),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.secondary
             )
@@ -53,7 +56,7 @@ fun LoginScreen(
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it },
-                label = { Text("Email") },
+                label = { Text(stringResource(R.string.email)) },
                 modifier = Modifier.fillMaxWidth(),
                 leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
                 shape = MaterialTheme.shapes.medium
@@ -63,7 +66,7 @@ fun LoginScreen(
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
-                label = { Text("Password") },
+                label = { Text(stringResource(R.string.password)) },
                 modifier = Modifier.fillMaxWidth(),
                 leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
                 visualTransformation = PasswordVisualTransformation(),
@@ -88,7 +91,7 @@ fun LoginScreen(
                     .height(56.dp),
                 shape = MaterialTheme.shapes.large
             ) {
-                Text("Login with Email", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.login_email), style = MaterialTheme.typography.titleMedium)
             }
             
             Spacer(modifier = Modifier.height(16.dp))
@@ -99,7 +102,7 @@ fun LoginScreen(
             ) {
                 HorizontalDivider(modifier = Modifier.weight(1f))
                 Text(
-                    text = "OR",
+                    text = stringResource(R.string.or),
                     modifier = Modifier.padding(horizontal = 16.dp),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.outline
@@ -129,7 +132,7 @@ fun LoginScreen(
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Sign in with Google", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.sign_in_google), style = MaterialTheme.typography.titleMedium)
             }
 
             // Reset loading if we are still on this screen (errors)

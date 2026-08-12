@@ -14,7 +14,9 @@ data class Chat(
     val lastMessageTimestamp: Long? = null,
     val lastMessageSenderId: String? = null,
     val lastMessageStatus: String? = null,
-    val unreadCount: Int = 0
+    val unreadCount: Int = 0,
+    val encryptionKey: String? = null,
+    val lastMessageEncryptionKey: String? = null
 ) {
     val status: MessageStatus?
         get() = lastMessageStatus?.let { 

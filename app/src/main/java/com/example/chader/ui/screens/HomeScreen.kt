@@ -24,6 +24,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import androidx.compose.ui.res.stringResource
+import com.example.chader.R
 import com.example.chader.data.model.Chat
 import com.example.chader.data.model.MessageStatus
 import com.example.chader.ui.viewmodel.ChatViewModel
@@ -67,7 +69,7 @@ fun HomeScreen(
 
         AlertDialog(
             onDismissRequest = { if (!isSearching) showDialog = false },
-            title = { Text("New Chat") },
+            title = { Text(stringResource(R.string.new_chat)) },
             text = {
                 Column {
                     OutlinedTextField(
@@ -76,7 +78,7 @@ fun HomeScreen(
                             emailInput = it 
                             errorMessage = null
                         },
-                        label = { Text("Email or Username") },
+                        label = { Text(stringResource(R.string.email_or_username)) },
                         placeholder = { Text("friend@example.com or @pseudo") },
                         isError = errorMessage != null,
                         modifier = Modifier.fillMaxWidth(),
@@ -118,14 +120,14 @@ fun HomeScreen(
                     },
                     enabled = !isSearching
                 ) {
-                    Text("Start Chat")
+                    Text(stringResource(R.string.start_chat))
                 }
             },
             dismissButton = {
                 TextButton(
                     onClick = { showDialog = false },
                     enabled = !isSearching
-                ) { Text("Cancel") }
+                ) { Text(stringResource(R.string.cancel)) }
             }
         )
     }
@@ -163,7 +165,7 @@ fun HomeScreen(
                         )
                     } else {
                         Text(
-                            text = "Définir un pseudo",
+                            text = stringResource(R.string.define_username),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.secondary,
                             modifier = Modifier.clickable { 
@@ -183,7 +185,7 @@ fun HomeScreen(
                 
                 NavigationDrawerItem(
                     icon = { Icon(Icons.Default.Chat, contentDescription = null) },
-                    label = { Text("Messages") },
+                    label = { Text(stringResource(R.string.messages_tab)) },
                     selected = true,
                     onClick = {
                         scope.launch { drawerState.close() }
@@ -193,7 +195,7 @@ fun HomeScreen(
 
                 NavigationDrawerItem(
                     icon = { Icon(Icons.Default.Person, contentDescription = null) },
-                    label = { Text("Profile") },
+                    label = { Text(stringResource(R.string.profile)) },
                     selected = false,
                     onClick = {
                         scope.launch { drawerState.close() }
@@ -204,7 +206,7 @@ fun HomeScreen(
                 
                 NavigationDrawerItem(
                     icon = { Icon(Icons.Default.Settings, contentDescription = null) },
-                    label = { Text("Settings") },
+                    label = { Text(stringResource(R.string.settings)) },
                     selected = false,
                     onClick = {
                         scope.launch { drawerState.close() }
@@ -217,7 +219,7 @@ fun HomeScreen(
                 
                 NavigationDrawerItem(
                     icon = { Icon(Icons.Default.ExitToApp, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
-                    label = { Text("Logout", color = MaterialTheme.colorScheme.error) },
+                    label = { Text(stringResource(R.string.logout), color = MaterialTheme.colorScheme.error) },
                     selected = false,
                     onClick = {
                         scope.launch { drawerState.close() }
@@ -247,11 +249,11 @@ fun HomeScreen(
                     },
                     actions = {
                         IconButton(onClick = onProfileClick) {
-                            Icon(Icons.Default.Person, contentDescription = "Profile", tint = MaterialTheme.colorScheme.primary)
+                            Icon(Icons.Default.Person, contentDescription = stringResource(R.string.profile), tint = MaterialTheme.colorScheme.primary)
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.background,
+                        containerColor = MaterialTheme.colorScheme.surface,
                         titleContentColor = MaterialTheme.colorScheme.primary
                     )
                 )
@@ -262,7 +264,7 @@ fun HomeScreen(
                     containerColor = MaterialTheme.colorScheme.tertiaryContainer,
                     contentColor = MaterialTheme.colorScheme.onTertiaryContainer
                 ) {
-                    Icon(Icons.Default.Chat, contentDescription = "New Chat")
+                    Icon(Icons.Default.Chat, contentDescription = stringResource(R.string.new_chat))
                 }
             }
         ) { padding ->
@@ -287,7 +289,7 @@ fun HomeScreen(
                             supportingContent = { 
                                 val prefix = when {
                                     chat.lastMessageSenderId == null -> ""
-                                    chat.lastMessageSenderId == myEmail -> "Vous : "
+                                    chat.lastMessageSenderId == myEmail -> stringResource(R.string.you) + " "
                                     else -> {
                                         val sender = users.find { it.email == chat.lastMessageSenderId }
                                         if (sender?.username?.isNotEmpty() == true) "${sender.username} : "
@@ -318,8 +320,9 @@ fun HomeScreen(
                                             )
                                         }
                                     }
+                                    val messageToShow = if (chat.lastMessageContent == "Message supprimé") "" else chat.lastMessageContent
                                     Text(
-                                        text = "$prefix${chat.lastMessageContent ?: otherUser?.status ?: "Pas encore de messages"}",
+                                        text = "$prefix${messageToShow ?: otherUser?.status ?: stringResource(R.string.no_messages)}",
                                         maxLines = 1,
                                         color = if (isUnread) MaterialTheme.colorScheme.onSurface else if (chat.lastMessageContent != null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.outline,
                                         fontWeight = if (isUnread) FontWeight.Bold else FontWeight.Normal,
@@ -328,13 +331,26 @@ fun HomeScreen(
                                 }
                             },
                             leadingContent = {
-                                AsyncImage(
-                                    model = otherUser?.avatarUrl ?: "https://i.pravatar.cc/150",
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .size(56.dp)
-                                        .clip(CircleShape)
-                                )
+                                Box {
+                                    AsyncImage(
+                                        model = otherUser?.avatarUrl ?: "https://i.pravatar.cc/150",
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .size(56.dp)
+                                            .clip(CircleShape)
+                                    )
+                                    if (otherUser?.status == "En ligne") {
+                                        Surface(
+                                            modifier = Modifier
+                                                .size(14.dp)
+                                                .align(Alignment.BottomEnd)
+                                                .offset(x = (-2).dp, y = (-2).dp),
+                                            shape = CircleShape,
+                                            color = Color.Green,
+                                            border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.surface)
+                                        ) {}
+                                    }
+                                }
                             },
                             trailingContent = {
                                 if (chat.unreadCount > 0 && chat.lastMessageSenderId != myEmail) {

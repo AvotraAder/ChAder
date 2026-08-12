@@ -2,51 +2,63 @@ package com.example.chader
 
 import android.os.Bundle
 import android.widget.Toast
-import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.Composable
-import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
+import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
+import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.os.LocaleListCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.NavKey
-import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
+import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
+import androidx.room.Room
+import com.example.chader.auth.CredentialManagerHelper
+import com.example.chader.data.datastore.UserSession
+import com.example.chader.data.datastore.UserSessionManager
+import com.example.chader.data.local.AppDatabase
+import com.example.chader.data.model.User
+import com.example.chader.data.repository.ChatRepository
 import com.example.chader.navigation.ChatRoute
 import com.example.chader.navigation.HomeRoute
 import com.example.chader.navigation.LoginRoute
+import com.example.chader.navigation.ProfileRoute
 import com.example.chader.ui.screens.ChatScreen
 import com.example.chader.ui.screens.HomeScreen
 import com.example.chader.ui.screens.LoginScreen
-import com.example.chader.ui.theme.ChAderTheme
-import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
-import androidx.compose.runtime.getValue
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.chader.data.datastore.UserSessionManager
-import com.example.chader.data.datastore.UserSession
-import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.launch
-import androidx.compose.runtime.LaunchedEffect
-import androidx.room.Room
-import com.example.chader.data.local.AppDatabase
-import com.example.chader.data.repository.ChatRepository
-import com.example.chader.ui.viewmodel.ChatViewModel
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
-import com.example.chader.data.model.User
-import com.example.chader.auth.CredentialManagerHelper
-import com.example.chader.navigation.ProfileRoute
 import com.example.chader.ui.screens.ProfileScreen
-import androidx.compose.ui.platform.LocalContext
-
+import com.example.chader.ui.theme.ChAderTheme
+import com.example.chader.ui.viewmodel.ChatViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
     @OptIn(ExperimentalMaterial3AdaptiveApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -62,10 +74,46 @@ class MainActivity : ComponentActivity() {
         val credentialManagerHelper = CredentialManagerHelper(applicationContext)
 
         enableEdgeToEdge()
+
         setContent {
-            ChAderTheme {
-                Surface(color = MaterialTheme.colorScheme.background) {
-                    ChAderApp(userSessionManager, repository, credentialManagerHelper)
+            // Pre-calculate current system language to avoid "null" or "default" flash
+            val currentSystemLang = remember { 
+                AppCompatDelegate.getApplicationLocales().toLanguageTags().ifEmpty { "fr" } 
+            }
+            
+            val userSessionState by userSessionManager.userSession.collectAsStateWithLifecycle(
+                initialValue = UserSession(null, null, null, null, null, currentSystemLang)
+            )
+            
+            val userSession = userSessionState!!
+            val isDarkTheme = userSession.isDarkMode ?: isSystemInDarkTheme()
+            val lang = userSession.language ?: currentSystemLang
+
+            // Sync with AppCompatDelegate (system level language)
+            LaunchedEffect(lang) {
+                val currentAppLocales = AppCompatDelegate.getApplicationLocales().toLanguageTags()
+                if (currentAppLocales != lang) {
+                    AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(lang))
+                }
+            }
+
+            // Sync Status Bar
+            DisposableEffect(isDarkTheme) {
+                enableEdgeToEdge(
+                    statusBarStyle = if (isDarkTheme) SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+                                     else SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
+                )
+                onDispose { }
+            }
+
+            ChAderTheme(darkTheme = isDarkTheme, dynamicColor = false) {
+                CompositionLocalProvider(LocalNavigationEventDispatcherOwner provides this@MainActivity) {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.background
+                    ) {
+                        ChAderApp(userSessionManager, repository, credentialManagerHelper)
+                    }
                 }
             }
         }
@@ -83,17 +131,38 @@ fun ChAderApp(
     val chatViewModel: ChatViewModel = viewModel(
         factory = object : ViewModelProvider.Factory {
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                @Suppress("UNCHECKED_CAST")
                 return ChatViewModel(repository) as T
             }
         }
     )
     
-    val userSession by userSessionManager.userSession.collectAsStateWithLifecycle(
-        initialValue = UserSession(null, null, null, null)
+    val userSessionState by userSessionManager.userSession.collectAsStateWithLifecycle(
+        initialValue = null
     )
+    val userSession = userSessionState ?: return
+
     val backStack = rememberNavBackStack(LoginRoute)
     val listDetailStrategy = rememberListDetailSceneStrategy<NavKey>()
     val scope = rememberCoroutineScope()
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(userSession.userId, lifecycleOwner) {
+        val userId = userSession.userId
+        val observer = LifecycleEventObserver { _, event ->
+            if (userId == null) return@LifecycleEventObserver
+            if (event == Lifecycle.Event.ON_START) {
+                chatViewModel.setUserStatus(userId, true)
+            } else if (event == Lifecycle.Event.ON_STOP) {
+                chatViewModel.setUserStatus(userId, false)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            userId?.let { chatViewModel.setUserStatus(it, false) }
+        }
+    }
 
     LaunchedEffect(userSession.token) {
         if (userSession.token != null && backStack.lastOrNull() == LoginRoute) {
@@ -112,14 +181,13 @@ fun ChAderApp(
                                 Toast.makeText(context, "Veuillez entrer un email", Toast.LENGTH_SHORT).show()
                                 return@launch
                             }
-                            // Connexion automatique simplifiée (Plan Spark)
                             val authResult = try {
                                 FirebaseAuth.getInstance().signInWithEmailAndPassword(email, "mot_de_passe_par_defaut").await()
                             } catch (e: Exception) {
                                 FirebaseAuth.getInstance().createUserWithEmailAndPassword(email, "mot_de_passe_par_defaut").await()
                             }
                             
-                                val user = authResult.user
+                            val user = authResult.user
                             if (user != null) {
                                 val id = user.uid
                                 val username = email.split("@")[0].lowercase()
@@ -137,7 +205,7 @@ fun ChAderApp(
                             }
                         } catch (e: Exception) {
                             e.printStackTrace()
-                            Toast.makeText(context, "Erreur de connexion. Vérifiez votre Internet et le fichier google-services.json", Toast.LENGTH_LONG).show()
+                            Toast.makeText(context, "Erreur de connexion", Toast.LENGTH_LONG).show()
                         }
                     }
                 },
@@ -169,12 +237,9 @@ fun ChAderApp(
                                         )
                                     )
                                 }
-                            } else {
-                                Toast.makeText(context, "Annulé ou échec Google.", Toast.LENGTH_SHORT).show()
                             }
                         } catch (e: Exception) {
                             e.printStackTrace()
-                            Toast.makeText(context, "Erreur Google : ${e.localizedMessage}", Toast.LENGTH_LONG).show()
                         }
                     }
                 }
@@ -190,6 +255,7 @@ fun ChAderApp(
                 onProfileClick = { backStack.add(ProfileRoute) },
                 onLogoutClick = {
                     scope.launch {
+                        userSession.userId?.let { chatViewModel.setUserStatus(it, false) }
                         FirebaseAuth.getInstance().signOut()
                         userSessionManager.clearSession()
                         backStack.clear()
@@ -205,10 +271,21 @@ fun ChAderApp(
                 onBack = { backStack.removeAt(backStack.lastIndex) },
                 onLogout = {
                     scope.launch {
+                        userSession.userId?.let { chatViewModel.setUserStatus(it, false) }
                         FirebaseAuth.getInstance().signOut()
                         userSessionManager.clearSession()
                         backStack.clear()
                         backStack.add(LoginRoute)
+                    }
+                },
+                onToggleDarkMode = { isDark ->
+                    scope.launch {
+                        userSessionManager.setDarkMode(isDark)
+                    }
+                },
+                onLanguageChange = { lang ->
+                    scope.launch {
+                        userSessionManager.setLanguage(lang)
                     }
                 }
             )

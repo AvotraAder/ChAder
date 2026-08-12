@@ -47,7 +47,7 @@ class ChatRepository(private val chatDao: ChatDao) {
                 val decryptedChats = sortedChats.map { chat ->
                     chat.copy(
                         lastMessageContent = chat.lastMessageContent?.let { 
-                            EncryptionUtils.decrypt(it, chat.id) 
+                            EncryptionUtils.decrypt(it, chat.lastMessageEncryptionKey ?: chat.encryptionKey)
                         }
                     )
                 }
@@ -79,7 +79,7 @@ class ChatRepository(private val chatDao: ChatDao) {
     }
 
     // Remote Sync
-    fun syncMessages(chatId: String): Flow<List<Message>> = callbackFlow {
+    fun syncMessages(chatId: String, currentChatKey: String?): Flow<List<Message>> = callbackFlow {
         val listener = firestore.collection("chats")
             .document(chatId)
             .collection("messages")
@@ -91,9 +91,9 @@ class ChatRepository(private val chatDao: ChatDao) {
                 }
                 val messages = snapshot?.toObjects(Message::class.java) ?: emptyList()
                 
-                // Decrypt messages content
+                // Decrypt messages content using their own key if available, otherwise fallback to current key
                 val decryptedMessages = messages.map { 
-                    it.copy(content = EncryptionUtils.decrypt(it.content, chatId)) 
+                    it.copy(content = EncryptionUtils.decrypt(it.content, it.encryptionKey ?: currentChatKey))
                 }
 
                 // Update local cache (optional but recommended)
@@ -106,11 +106,11 @@ class ChatRepository(private val chatDao: ChatDao) {
         awaitClose { listener.remove() }
     }
 
-    suspend fun sendMessage(chatId: String, content: String) {
+    suspend fun sendMessage(chatId: String, content: String, encryptionKey: String?) {
         val userEmail = auth.currentUser?.email ?: "unknown"
         
         // Encrypt message content for Firestore
-        val encryptedContent = EncryptionUtils.encrypt(content, chatId)
+        val encryptedContent = EncryptionUtils.encrypt(content, encryptionKey)
         
         val message = Message(
             id = UUID.randomUUID().toString(),
@@ -118,7 +118,8 @@ class ChatRepository(private val chatDao: ChatDao) {
             senderId = userEmail,
             content = encryptedContent,
             timestamp = System.currentTimeMillis(),
-            status = "SENT"
+            status = "SENT",
+            encryptionKey = encryptionKey // Store the key used for this specific message
         )
         
         // Save message to Firestore sub-collection
@@ -134,6 +135,7 @@ class ChatRepository(private val chatDao: ChatDao) {
                 "lastMessageTimestamp" to message.timestamp,
                 "lastMessageSenderId" to message.senderId,
                 "lastMessageStatus" to "SENT",
+                "lastMessageEncryptionKey" to encryptionKey, // Track key in chat for preview decryption
                 "unreadCount" to com.google.firebase.firestore.FieldValue.increment(1)
             ))
         }.await()
@@ -230,6 +232,38 @@ class ChatRepository(private val chatDao: ChatDao) {
         chatDao.insertUser(user)
     }
 
+    suspend fun updateUserStatus(userId: String, isOnline: Boolean) {
+        val status = if (isOnline) "En ligne" else "Hors ligne"
+        
+        try {
+            firestore.collection("users").document(userId)
+                .update("status", status)
+                .await()
+            
+            // Update local cache
+            chatDao.getUserById(userId)?.let { user ->
+                chatDao.insertUser(user.copy(status = status))
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    suspend fun updateLastSeen(userId: String) {
+        val lastSeen = System.currentTimeMillis()
+        try {
+            firestore.collection("users").document(userId)
+                .update("lastSeen", lastSeen)
+                .await()
+            
+            chatDao.getUserById(userId)?.let { user ->
+                chatDao.insertUser(user.copy(lastSeen = lastSeen))
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     suspend fun updateUsername(userId: String, newUsername: String): Result<Unit> {
         val trimmedUsername = newUsername.trim().removePrefix("@")
         
@@ -299,5 +333,67 @@ class ChatRepository(private val chatDao: ChatDao) {
         firestore.collection("chats").document(chatId).set(chat).await()
         chatDao.insertChat(chat)
         return chatId
+    }
+
+    suspend fun editMessage(chatId: String, messageId: String, newContent: String, encryptionKey: String?) {
+        val encryptedContent = EncryptionUtils.encrypt(newContent, encryptionKey)
+        
+        val chatRef = firestore.collection("chats").document(chatId)
+        val messageRef = chatRef.collection("messages").document(messageId)
+
+        firestore.runBatch { batch ->
+            batch.update(messageRef, mapOf(
+                "content" to encryptedContent,
+                "isEdited" to true,
+                "encryptionKey" to encryptionKey
+            ))
+            
+            // If it was the last message, update the chat preview and its key too
+            chatRef.get().continueWith { task ->
+                val doc = task.result
+                if (doc?.getString("lastMessageId") == messageId) {
+                    chatRef.update(mapOf(
+                        "lastMessageContent" to encryptedContent,
+                        "lastMessageEncryptionKey" to encryptionKey
+                    ))
+                }
+            }
+        }.await()
+    }
+
+    suspend fun deleteMessage(chatId: String, messageId: String) {
+        val chatRef = firestore.collection("chats").document(chatId)
+        val messageRef = chatRef.collection("messages").document(messageId)
+
+        firestore.runBatch { batch ->
+            // Delete the message document completely
+            batch.delete(messageRef)
+            
+            // If this message was the last one shown in preview, clear the preview
+            // (In a perfect world, we'd find the previous message, but clearing is safer here)
+            chatRef.get().continueWith { task ->
+                val doc = task.result
+                if (doc?.getString("lastMessageId") == messageId) {
+                    chatRef.update(mapOf(
+                        "lastMessageId" to null,
+                        "lastMessageContent" to null,
+                        "lastMessageTimestamp" to null,
+                        "lastMessageSenderId" to null,
+                        "lastMessageStatus" to null
+                    ))
+                }
+            }
+        }.await()
+    }
+
+    suspend fun updateChatEncryptionKey(chatId: String, newKey: String) {
+        firestore.collection("chats").document(chatId)
+            .update("encryptionKey", newKey)
+            .await()
+        
+        // Update local cache
+        chatDao.getChatById(chatId)?.let { chat ->
+            chatDao.insertChat(chat.copy(encryptionKey = newKey))
+        }
     }
 }

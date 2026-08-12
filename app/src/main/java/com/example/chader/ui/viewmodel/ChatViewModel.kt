@@ -32,7 +32,7 @@ class ChatViewModel(private val repository: ChatRepository) : ViewModel() {
         _myEmail.value = email
     }
     
-    fun getMessages(chatId: String): Flow<List<Message>> = repository.syncMessages(chatId)
+    fun getMessages(chatId: String, encryptionKey: String?): Flow<List<Message>> = repository.syncMessages(chatId, encryptionKey)
 
     fun markAsReceived(chatId: String, myEmail: String) {
         viewModelScope.launch {
@@ -46,9 +46,39 @@ class ChatViewModel(private val repository: ChatRepository) : ViewModel() {
         }
     }
 
-    fun sendMessage(chatId: String, content: String) {
+    fun sendMessage(chatId: String, content: String, encryptionKey: String?) {
         viewModelScope.launch {
-            repository.sendMessage(chatId, content)
+            repository.sendMessage(chatId, content, encryptionKey)
+        }
+    }
+
+    fun editMessage(chatId: String, messageId: String, newContent: String, encryptionKey: String?) {
+        viewModelScope.launch {
+            repository.editMessage(chatId, messageId, newContent, encryptionKey)
+        }
+    }
+
+    fun deleteMessage(chatId: String, messageId: String) {
+        viewModelScope.launch {
+            repository.deleteMessage(chatId, messageId)
+        }
+    }
+
+    fun updateEncryptionKey(chatId: String, newKey: String) {
+        viewModelScope.launch {
+            repository.updateChatEncryptionKey(chatId, newKey)
+        }
+    }
+
+    fun setUserStatus(userId: String, isOnline: Boolean) {
+        viewModelScope.launch {
+            repository.updateUserStatus(userId, isOnline)
+        }
+    }
+
+    fun updateLastSeen(userId: String) {
+        viewModelScope.launch {
+            repository.updateLastSeen(userId)
         }
     }
 
