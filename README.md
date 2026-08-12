@@ -1,35 +1,64 @@
-# ChAder
+# ChAder 💬
 
-ChAder is a streamlined, responsive real-time chat application built with a focus on speed and modern aesthetics. Utilizing Material Design 3, the app provides a vibrant, energetic user experience that seamlessly adapts across various Android device form factors, from mobile phones to foldables and tablets.
+[![Kotlin](https://img.shields.io/badge/Kotlin-1.9+-blue.svg?style=flat&logo=kotlin)](https://kotlinlang.org)
+[![Compose](https://img.shields.io/badge/Jetpack_Compose-Material_3-green.svg?style=flat&logo=android)](https://developer.android.com/jetpack/compose)
+[![Platform](https://img.shields.io/badge/Platform-Android-brightgreen.svg?style=flat&logo=android)](https://www.android.com)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Features
+ChAder is a high-performance, real-time messaging application for Android, built with a **Local-First** architecture. It delivers a fluid, expressive user experience using **Jetpack Compose** and **Material Design 3**, designed to adapt seamlessly across mobile, foldables, and tablets.
 
-*   **Simplified Authentication:** Quick and secure access via Email or Google Sign-In, eliminating the need for a traditional registration flow and streamlining the onboarding process.
-*   **Real-Time Messaging:** Instantaneous communication with a reactive UI that updates as messages arrive, powered by Firebase Firestore for cloud sync and Room for local persistence.
-*   **Stories:** A dedicated, visually-driven section for sharing ephemeral updates, featuring a vibrant gradient.
-*   **Adaptive Communication Hub:** A dynamic interface using multi-pane layouts (`ListDetailPaneScaffold`) to provide an optimized viewing experience on both small and large screens.
-*   **Edge-to-Edge Experience:** Full support for modern Android display standards, utilizing the entire screen area while respecting system bars.
+## ✨ Key Features
 
-## Tech Stack
+*   **⚡ Real-Time Sync:** Instant messaging powered by **Firebase Firestore** with multi-device synchronization.
+*   **📦 Local-First Architecture:** Full offline support via **Room Database**. Chat anytime; data syncs automatically when online.
+*   **📱 Adaptive UI:** Intelligent layouts using `ListDetailPaneScaffold` that optimize for large screens and foldables.
+*   **🔐 Seamless Auth:** One-tap entry via **Google Sign-In** or Email, removing friction from the onboarding process.
+*   **📸 Stories:** Ephemeral visual updates with a vibrant, gesture-driven interface.
+*   **🎨 Expressive Design:** Modern aesthetics with edge-to-edge support, dynamic colors, and smooth spring-based animations.
 
-*   **Language:** Kotlin
-*   **UI Framework:** Jetpack Compose with Material Design 3 (energetic color scheme)
-*   **Navigation:** Jetpack Navigation 3 (State-driven navigation logic)
-*   **Adaptive Strategy:** Compose Material Adaptive library for responsive, multi-pane layouts.
-*   **Database:** Room (for local persistence and real-time data streams)
-*   **Cloud Backend:** Firebase Firestore (for real-time synchronization)
-*   **Networking:** Retrofit and OkHttp for API communication.
-*   **Image Loading:** Coil for efficient rendering of user avatars and stories.
-*   **Session Management:** DataStore Preferences for secure user session persistence.
+## 🛠 Tech Stack
 
-## Project Notes
+| Category | Technology |
+| :--- | :--- |
+| **Language** | [Kotlin](https://kotlinlang.org/) |
+| **UI** | [Jetpack Compose](https://developer.android.com/jetpack/compose) (Material 3) |
+| **Local DB** | [Room](https://developer.android.com/training/data-storage/room) |
+| **Backend** | [Firebase Firestore](https://firebase.google.com/docs/firestore) |
+| **Navigation** | Jetpack Navigation 3 |
+| **Async** | Kotlin Coroutines & Flow |
+| **Storage** | DataStore Preferences |
+| **Images** | [Coil](https://coil-kt.github.io/coil/) |
 
-### Data Model Resolution
-The application uses a unified `Message` data model that is compatible with both Room and Firebase Firestore. To handle potential conflicts with Kotlin boolean property naming conventions (e.g., `isEdited` vs `edited`), the model uses specific annotations (`@get:Ignore` and `@get:Exclude`) to ensure smooth serialization and database mapping without ambiguity.
+## 🏗 Architecture & Implementation
 
-## Design Philosophy
+### Data Consistency & Conflict Resolution
+ChAder uses a unified data model designed for dual-engine compatibility (Local Room + Cloud Firebase). 
+To resolve JVM signature conflicts between database fields and helper properties, we implement specific annotation targeting:
 
-The app follows **Material Design 3 Expressive** guidelines, characterized by:
-- **Vibrant Colors:** A high-chroma palette that shifts between light and dark modes.
-- **Modern Iconography:** Adaptive icons and rounded Material Symbols.
-- **Expressive Motion:** Smooth, spring-based animations for transitions and interactions.
+```kotlin
+@get:Ignore  // For Room
+@get:Exclude // For Firebase
+val isEdited: Boolean get() = edited
+```
+
+### Performance Optimization
+- **Reactive Streams:** End-to-end implementation of `Flow` from Database/Firestore to the UI layer.
+- **Efficient Rendering:** Uses Compose best practices to minimize recompositions in high-frequency chat environments.
+- **Adaptive Layouts:** Implements the latest `androidx.compose.material3.adaptive` APIs for future-proof responsiveness.
+
+## 🚀 Getting Started
+
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/yourusername/ChAder.git
+    ```
+2.  **Add Firebase:**
+    - Create a project in the [Firebase Console](https://console.firebase.google.com/).
+    - Add an Android app and download the `google-services.json`.
+    - Place it in the `app/` directory.
+3.  **Build & Run:**
+    - Open the project in Android Studio (Ladybug or newer).
+    - Sync Gradle and run on an emulator or physical device.
+
+---
+*Developed with ❤ focusing on modern Android standards.*
