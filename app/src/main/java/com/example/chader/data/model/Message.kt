@@ -1,7 +1,9 @@
 package com.example.chader.data.model
 
 import androidx.room.Entity
+import androidx.room.Ignore
 import androidx.room.PrimaryKey
+import com.google.firebase.firestore.Exclude
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -15,9 +17,16 @@ data class Message(
     val type: MessageType = MessageType.TEXT,
     val status: String = "SENT",
     val encryptionKey: String? = null,
-    val isEdited: Boolean = false,
-    val isDeleted: Boolean = false
+    val edited: Boolean = false,
+    val deleted: Boolean = false,
 ) {
+    @get:Ignore
+    @get:Exclude
+    val isEdited: Boolean get() = edited
+    @get:Ignore
+    @get:Exclude
+    val isDeleted: Boolean get() = deleted
+
     val messageStatus: MessageStatus
         get() = try { enumValueOf<MessageStatus>(status) } catch (e: Exception) { MessageStatus.SENT }
 }
