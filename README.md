@@ -13,7 +13,6 @@ ChAder is a high-performance, real-time messaging application for Android, built
 *   **📦 Local-First Architecture:** Full offline support via **Room Database**. Chat anytime; data syncs automatically when online.
 *   **📱 Adaptive UI:** Intelligent layouts using `ListDetailPaneScaffold` that optimize for large screens and foldables.
 *   **🔐 Seamless Auth:** One-tap entry via **Google Sign-In** or Email, removing friction from the onboarding process.
-*   **📸 Stories:** Ephemeral visual updates with a vibrant, gesture-driven interface.
 *   **🎨 Expressive Design:** Modern aesthetics with edge-to-edge support, dynamic colors, and smooth spring-based animations.
 
 ## 🛠 Tech Stack
@@ -27,7 +26,7 @@ ChAder is a high-performance, real-time messaging application for Android, built
 | **Navigation** | Jetpack Navigation 3 |
 | **Async** | Kotlin Coroutines & Flow |
 | **Storage** | DataStore Preferences |
-| **Images** | [Coil](https://coil-kt.github.io/coil/) |
+| **Images** | [Coil](https://coil-kt.github.io/coil/) (Avatars & Shared media) |
 
 ## 🏗 Architecture & Implementation
 
@@ -35,11 +34,6 @@ ChAder is a high-performance, real-time messaging application for Android, built
 ChAder uses a unified data model designed for dual-engine compatibility (Local Room + Cloud Firebase). 
 To resolve JVM signature conflicts between database fields and helper properties, we implement specific annotation targeting:
 
-```kotlin
-@get:Ignore  // For Room
-@get:Exclude // For Firebase
-val isEdited: Boolean get() = edited
-```
 
 ### Performance Optimization
 - **Reactive Streams:** End-to-end implementation of `Flow` from Database/Firestore to the UI layer.
@@ -61,4 +55,4 @@ val isEdited: Boolean get() = edited
     - Sync Gradle and run on an emulator or physical device.
 
 ---
-*Developed with ❤ focusing on modern Android standards.*
+*Developed with focusing on modern Android standards.*
