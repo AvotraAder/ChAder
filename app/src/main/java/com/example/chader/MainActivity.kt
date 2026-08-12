@@ -71,7 +71,7 @@ class MainActivity : AppCompatActivity() {
         
         val repository = ChatRepository(database.chatDao())
         val userSessionManager = UserSessionManager(applicationContext)
-        val credentialManagerHelper = CredentialManagerHelper(applicationContext)
+        val credentialManagerHelper = CredentialManagerHelper(this)
 
         enableEdgeToEdge()
 
@@ -237,9 +237,12 @@ fun ChAderApp(
                                         )
                                     )
                                 }
+                            } else {
+                                Toast.makeText(context, "Échec de la récupération du compte", Toast.LENGTH_SHORT).show()
                             }
                         } catch (e: Exception) {
                             e.printStackTrace()
+                            Toast.makeText(context, "Erreur Google: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
                         }
                     }
                 }
