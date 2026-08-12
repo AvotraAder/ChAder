@@ -341,47 +341,45 @@ class ChatRepository(private val chatDao: ChatDao) {
         val chatRef = firestore.collection("chats").document(chatId)
         val messageRef = chatRef.collection("messages").document(messageId)
 
+        // Important: Update BOTH the message document and the chat preview document
         firestore.runBatch { batch ->
             batch.update(messageRef, mapOf(
                 "content" to encryptedContent,
-                "isEdited" to true,
+                "edited" to true,
                 "encryptionKey" to encryptionKey
             ))
-            
-            // If it was the last message, update the chat preview and its key too
-            chatRef.get().continueWith { task ->
-                val doc = task.result
-                if (doc?.getString("lastMessageId") == messageId) {
-                    chatRef.update(mapOf(
-                        "lastMessageContent" to encryptedContent,
-                        "lastMessageEncryptionKey" to encryptionKey
-                    ))
-                }
-            }
         }.await()
+        
+        // Secondary update for the chat preview if it's the last message
+        val chatSnapshot = chatRef.get().await()
+        if (chatSnapshot.getString("lastMessageId") == messageId) {
+            chatRef.update(mapOf(
+                "lastMessageContent" to encryptedContent,
+                "lastMessageEncryptionKey" to encryptionKey
+            )).await()
+        }
     }
 
     suspend fun deleteMessage(chatId: String, messageId: String) {
         val chatRef = firestore.collection("chats").document(chatId)
         val messageRef = chatRef.collection("messages").document(messageId)
 
+        // Get chat doc first to check if it's the last message
+        val chatDoc = chatRef.get().await()
+        val isLastMessage = chatDoc.getString("lastMessageId") == messageId
+
         firestore.runBatch { batch ->
             // Delete the message document completely
             batch.delete(messageRef)
             
-            // If this message was the last one shown in preview, clear the preview
-            // (In a perfect world, we'd find the previous message, but clearing is safer here)
-            chatRef.get().continueWith { task ->
-                val doc = task.result
-                if (doc?.getString("lastMessageId") == messageId) {
-                    chatRef.update(mapOf(
-                        "lastMessageId" to null,
-                        "lastMessageContent" to null,
-                        "lastMessageTimestamp" to null,
-                        "lastMessageSenderId" to null,
-                        "lastMessageStatus" to null
-                    ))
-                }
+            if (isLastMessage) {
+                batch.update(chatRef, mapOf(
+                    "lastMessageId" to null,
+                    "lastMessageContent" to null,
+                    "lastMessageTimestamp" to null,
+                    "lastMessageSenderId" to null,
+                    "lastMessageStatus" to null
+                ))
             }
         }.await()
     }

@@ -13,6 +13,7 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.DoneAll
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -360,20 +361,20 @@ fun MessageBubble(
         ) {
             Text(text = message.content, color = textColor)
             
-            if (message.isEdited) {
-                Text(
-                    text = stringResource(R.string.edited),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = textColor.copy(alpha = 0.5f),
-                    modifier = Modifier.align(Alignment.End)
-                )
-            }
-            
             Row(
                 modifier = Modifier.align(Alignment.End),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
+                // Ensure the icon shows by forcing a check on isEdited
+                if (message.isEdited) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Edited",
+                        modifier = Modifier.size(11.dp),
+                        tint = textColor.copy(alpha = 0.6f)
+                    )
+                }
                 val time = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(message.timestamp))
                 Text(
                     text = time,
