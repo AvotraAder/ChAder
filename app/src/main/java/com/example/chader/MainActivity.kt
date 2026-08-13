@@ -194,7 +194,8 @@ fun ChAderApp(
                             if (user != null) {
                                 val id = user.uid
                                 val username = email.split("@")[0].lowercase()
-                                userSessionManager.saveSession("token_spark", id, name, email)
+                                
+                                // On attend que Firebase enregistre les données AVANT de sauvegarder la session
                                 repository.createOrUpdateUser(
                                     User(
                                         id = id,
@@ -205,6 +206,8 @@ fun ChAderApp(
                                         status = "En ligne"
                                     )
                                 )
+                                // Sauvegarder la session déclenche la navigation immédiate
+                                userSessionManager.saveSession("token_spark", id, name, email)
                             }
                         } catch (e: Exception) {
                             e.printStackTrace()
