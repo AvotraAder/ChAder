@@ -1,7 +1,6 @@
 package com.example.chader.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.shape.CircleShape
@@ -19,7 +18,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -31,7 +29,7 @@ import com.example.chader.ui.theme.HushTheme
 import androidx.compose.ui.res.stringResource
 import com.example.chader.R
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun LoginScreen(
     onLoginSuccess: (String, String, String) -> Unit,
@@ -146,7 +144,7 @@ fun LoginScreen(
                         .fillMaxWidth()
                         .height(56.dp),
                     shape = MaterialTheme.shapes.large,
-                    border = ButtonDefaults.outlinedButtonBorder.copy(
+                    border = ButtonDefaults.outlinedButtonBorder(enabled = !isLoading).copy(
                         brush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.outlineVariant)
                     )
                 ) {
@@ -206,10 +204,10 @@ fun LoginScreen(
 
 @Preview(showBackground = true)
 @Composable
-fun LoginScreenPreview() {
+fun LoginPreview() {
     HushTheme {
         LoginScreen(
-            onLoginSuccess = { _, _, _ -> }, 
+            onLoginSuccess = { _, _, _ -> },
             onGoogleSignInClick = {},
             onSettingsClick = {}
         )
