@@ -26,7 +26,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.chader.ui.theme.ChAderTheme
+import com.example.chader.ui.theme.HushTheme
 
 import androidx.compose.ui.res.stringResource
 import com.example.chader.R
@@ -207,7 +207,7 @@ fun LoginScreen(
 @Preview(showBackground = true)
 @Composable
 fun LoginScreenPreview() {
-    ChAderTheme {
+    HushTheme {
         LoginScreen(
             onLoginSuccess = { _, _, _ -> }, 
             onGoogleSignInClick = {},

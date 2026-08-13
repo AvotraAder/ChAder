@@ -263,7 +263,7 @@ fun HomeScreen(
                     },
                     title = { 
                         Text(
-                            "ChAder", 
+                            "Hush",
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.Bold
                         ) 

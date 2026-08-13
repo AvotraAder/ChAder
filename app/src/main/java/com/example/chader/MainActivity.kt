@@ -53,7 +53,7 @@ import com.example.chader.ui.screens.HomeScreen
 import com.example.chader.ui.screens.LoginScreen
 import com.example.chader.ui.screens.ProfileScreen
 import com.example.chader.ui.screens.SettingsScreen
-import com.example.chader.ui.theme.ChAderTheme
+import com.example.chader.ui.theme.HushTheme
 import com.example.chader.ui.viewmodel.ChatViewModel
 import com.example.chader.util.JwtUtils
 import com.google.firebase.auth.FirebaseAuth
@@ -109,13 +109,13 @@ class MainActivity : AppCompatActivity() {
                 onDispose { }
             }
 
-            ChAderTheme(darkTheme = isDarkTheme, dynamicColor = false) {
+            HushTheme(darkTheme = isDarkTheme, dynamicColor = false) {
                 CompositionLocalProvider(LocalNavigationEventDispatcherOwner provides this@MainActivity) {
                     Surface(
                         modifier = Modifier.fillMaxSize(),
                         color = MaterialTheme.colorScheme.background
                     ) {
-                        ChAderApp(userSessionManager, repository, credentialManagerHelper)
+                        HushApp(userSessionManager, repository, credentialManagerHelper)
                     }
                 }
             }
@@ -125,7 +125,7 @@ class MainActivity : AppCompatActivity() {
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
-fun ChAderApp(
+fun HushApp(
     userSessionManager: UserSessionManager, 
     repository: ChatRepository,
     credentialManagerHelper: CredentialManagerHelper
