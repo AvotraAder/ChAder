@@ -69,7 +69,7 @@ class MainActivity : AppCompatActivity() {
         val database = Room.databaseBuilder(
             applicationContext,
             AppDatabase::class.java,
-            "chader_db"
+            "hush_db"
         ).fallbackToDestructiveMigration().build()
         
         val repository = ChatRepository(database.chatDao())

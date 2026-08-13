@@ -4,19 +4,19 @@ import androidx.navigation3.runtime.NavKey
 import kotlinx.serialization.Serializable
 
 @Serializable
-sealed interface ChAderRoute : NavKey
+sealed interface HushRoute : NavKey
 
 @Serializable
-data object LoginRoute : ChAderRoute
+data object LoginRoute : HushRoute
 
 @Serializable
-data object HomeRoute : ChAderRoute
+data object HomeRoute : HushRoute
 
 @Serializable
-data object ProfileRoute : ChAderRoute
+data object ProfileRoute : HushRoute
 
 @Serializable
-data object SettingsRoute : ChAderRoute
+data object SettingsRoute : HushRoute
 
 @Serializable
-data class ChatRoute(val chatId: String) : ChAderRoute
+data class ChatRoute(val chatId: String) : HushRoute

@@ -1,6 +1,6 @@
 <resources>
 
-    <style name="Theme.ChAder" parent="Theme.AppCompat.DayNight.NoActionBar">
+    <style name="Theme.Hush" parent="Theme.AppCompat.DayNight.NoActionBar">
         <!-- Status bar is handled by enableEdgeToEdge() in Activity -->
     </style>
 </resources>
