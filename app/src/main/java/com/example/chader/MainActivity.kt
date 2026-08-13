@@ -47,10 +47,12 @@ import com.example.chader.navigation.ChatRoute
 import com.example.chader.navigation.HomeRoute
 import com.example.chader.navigation.LoginRoute
 import com.example.chader.navigation.ProfileRoute
+import com.example.chader.navigation.SettingsRoute
 import com.example.chader.ui.screens.ChatScreen
 import com.example.chader.ui.screens.HomeScreen
 import com.example.chader.ui.screens.LoginScreen
 import com.example.chader.ui.screens.ProfileScreen
+import com.example.chader.ui.screens.SettingsScreen
 import com.example.chader.ui.theme.ChAderTheme
 import com.example.chader.ui.viewmodel.ChatViewModel
 import com.example.chader.util.JwtUtils
@@ -261,6 +263,19 @@ fun ChAderApp(
                             Toast.makeText(context, "Erreur Google: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
                         }
                     }
+                },
+                onSettingsClick = { backStack.add(SettingsRoute) }
+            )
+        }
+        entry(SettingsRoute) {
+            SettingsScreen(
+                session = userSession,
+                onBack = { backStack.removeAt(backStack.lastIndex) },
+                onToggleDarkMode = { isDark ->
+                    scope.launch { userSessionManager.setDarkMode(isDark) }
+                },
+                onLanguageChange = { lang ->
+                    scope.launch { userSessionManager.setLanguage(lang) }
                 }
             )
         }
@@ -272,6 +287,7 @@ fun ChAderApp(
                 myEmail = userSession.userEmail ?: "",
                 onChatClick = { chatId -> backStack.add(ChatRoute(chatId)) },
                 onProfileClick = { backStack.add(ProfileRoute) },
+                onSettingsClick = { backStack.add(SettingsRoute) },
                 onLogoutClick = {
                     scope.launch {
                         userSession.userId?.let { chatViewModel.setUserStatus(it, false) }

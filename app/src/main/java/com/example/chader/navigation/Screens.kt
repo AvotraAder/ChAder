@@ -16,4 +16,7 @@ data object HomeRoute : ChAderRoute
 data object ProfileRoute : ChAderRoute
 
 @Serializable
+data object SettingsRoute : ChAderRoute
+
+@Serializable
 data class ChatRoute(val chatId: String) : ChAderRoute

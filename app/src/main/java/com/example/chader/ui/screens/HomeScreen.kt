@@ -40,6 +40,7 @@ fun HomeScreen(
     myEmail: String,
     onChatClick: (String) -> Unit,
     onProfileClick: () -> Unit,
+    onSettingsClick: () -> Unit,
     onLogoutClick: () -> Unit
 ) {
     val chats by viewModel.chats.collectAsStateWithLifecycle()
@@ -230,7 +231,7 @@ fun HomeScreen(
                     selected = false,
                     onClick = {
                         scope.launch { drawerState.close() }
-                        // Future settings logic
+                        onSettingsClick()
                     },
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
