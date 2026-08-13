@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,13 +21,24 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import coil.compose.AsyncImage
 import com.example.chader.R
 import com.example.chader.data.datastore.UserSession
 import com.example.chader.ui.viewmodel.ChatViewModel
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
+import com.google.firebase.storage.FirebaseStorage
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.filled.Person
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,14 +50,49 @@ fun ProfileScreen(
     onToggleDarkMode: (Boolean) -> Unit,
     onLanguageChange: (String) -> Unit
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var isEditing by remember { mutableStateOf(false) }
     var usernameState by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isSaving by remember { mutableStateOf(false) }
+    var isUploading by remember { mutableStateOf(false) }
     
     // Get current user from VM to get the most up-to-date username
     val users by viewModel.users.collectAsState()
     val currentUser = users.find { it.id == session.userId }
+
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        uri?.let {
+            scope.launch {
+                isUploading = true
+                try {
+                    val userId = session.userId ?: throw Exception("Utilisateur non connecté")
+                    val storage = FirebaseStorage.getInstance()
+                    val storageRef = storage.reference.child("avatars/$userId.jpg")
+                    
+                    storageRef.putFile(it).await()
+                    val downloadUrl = storageRef.downloadUrl.await().toString()
+                    
+                    viewModel.updateAvatarUrl(userId, downloadUrl)
+                    Toast.makeText(context, "Photo mise à jour avec succès", Toast.LENGTH_SHORT).show()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    val errorMsg = e.localizedMessage ?: "Erreur inconnue"
+                    val userFriendlyMsg = when {
+                        errorMsg.contains("Permission denied") -> "Accès refusé : Vérifiez les 'Rules' dans la console Firebase Storage."
+                        errorMsg.contains("bucket") -> "Erreur de configuration : Le 'Storage' n'est peut-être pas activé dans la console."
+                        else -> "Erreur : $errorMsg"
+                    }
+                    Toast.makeText(context, userFriendlyMsg, Toast.LENGTH_LONG).show()
+                } finally {
+                    isUploading = false
+                }
+            }
+        }
+    }
     
     LaunchedEffect(currentUser) {
         if (!isEditing) {
@@ -112,15 +159,52 @@ fun ProfileScreen(
                 modifier = Modifier
                     .size(120.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer),
+                    .background(MaterialTheme.colorScheme.primaryContainer)
+                    .clickable(enabled = !isUploading) { 
+                        photoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    },
                 contentAlignment = Alignment.Center
             ) {
-                AsyncImage(
-                    model = currentUser?.avatarUrl ?: "https://i.pravatar.cc/150",
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize().clip(CircleShape),
-                    contentScale = ContentScale.Crop
-                )
+                if (currentUser?.avatarUrl != null) {
+                    AsyncImage(
+                        model = currentUser.avatarUrl,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize().clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp),
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+                
+                if (isUploading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(120.dp),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                        strokeWidth = 4.dp
+                    )
+                } else {
+                    // Petite icône d'édition sur l'image
+                    Surface(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .size(32.dp),
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primary,
+                        tonalElevation = 4.dp
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = stringResource(R.string.change_profile_picture),
+                            modifier = Modifier.padding(6.dp),
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -128,7 +212,8 @@ fun ProfileScreen(
             Text(
                 text = currentUser?.name ?: session.userName ?: "Unknown User",
                 style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
             )
 
             if (isEditing) {
@@ -146,7 +231,7 @@ fun ProfileScreen(
                         if (errorMessage != null) {
                             Text(errorMessage!!, color = MaterialTheme.colorScheme.error)
                         } else {
-                            Text("Ce pseudo sera utilisé pour vous trouver.")
+                            Text("Ce pseudo sera utilisé pour vous trouver.", textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                         }
                     },
                     enabled = !isSaving
@@ -156,14 +241,16 @@ fun ProfileScreen(
                     text = if (currentUser?.username?.isNotEmpty() == true) currentUser.username else "Aucun pseudo défini",
                     style = MaterialTheme.typography.titleMedium,
                     color = if (currentUser?.username?.isNotEmpty() == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Medium,
+                    textAlign = TextAlign.Center
                 )
             }
 
             Text(
                 text = session.userEmail ?: "No email provided",
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.secondary
+                color = MaterialTheme.colorScheme.secondary,
+                textAlign = TextAlign.Center
             )
 
             Spacer(modifier = Modifier.height(32.dp))

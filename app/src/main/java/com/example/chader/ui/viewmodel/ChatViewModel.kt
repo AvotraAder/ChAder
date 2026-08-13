@@ -89,6 +89,12 @@ class ChatViewModel(private val repository: ChatRepository) : ViewModel() {
         }
     }
 
+    fun updateAvatarUrl(userId: String, url: String) {
+        viewModelScope.launch {
+            repository.updateAvatarUrl(userId, url)
+        }
+    }
+
     fun startChatByQuery(query: String, myEmail: String, onResult: (String?) -> Unit) {
         viewModelScope.launch {
             println("DEBUG: Starting chat search for query: $query")
@@ -118,8 +124,22 @@ class ChatViewModel(private val repository: ChatRepository) : ViewModel() {
     // Demo data helper
     fun seedDemoData(myEmail: String) {
         viewModelScope.launch {
-            val user1 = User("user1", "Alice", "alice@example.com", "https://i.pravatar.cc/150?u=user1", "Feeling energetic!")
-            val user2 = User("user2", "Bob", "bob@example.com", "https://i.pravatar.cc/150?u=user2", "Available")
+            val user1 = User(
+                id = "user1", 
+                name = "Alice", 
+                email = "alice@example.com", 
+                username = "alice",
+                avatarUrl = null, 
+                status = "Feeling energetic!"
+            )
+            val user2 = User(
+                id = "user2", 
+                name = "Bob", 
+                email = "bob@example.com", 
+                username = "bob",
+                avatarUrl = null, 
+                status = "Available"
+            )
             repository.createOrUpdateUser(user1)
             repository.createOrUpdateUser(user2)
             

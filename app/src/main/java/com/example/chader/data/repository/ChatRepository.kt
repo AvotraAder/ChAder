@@ -228,8 +228,46 @@ class ChatRepository(private val chatDao: ChatDao) {
     }
 
     suspend fun createOrUpdateUser(user: User) {
-        firestore.collection("users").document(user.id).set(user).await()
-        chatDao.insertUser(user)
+        val userRef = firestore.collection("users").document(user.id)
+        val existingUserDoc = userRef.get().await()
+        
+        if (existingUserDoc.exists()) {
+            // Si l'utilisateur existe, on ne met à jour QUE les champs nécessaires
+            // On ne touche PAS au username ni à l'avatar s'ils existent déjà
+            val updates = mutableMapOf<String, Any>()
+            
+            val currentUsername = existingUserDoc.getString("username")
+            val currentAvatar = existingUserDoc.getString("avatarUrl")
+            
+            // On ne met à jour le nom et l'email que s'ils ont changé (rare)
+            updates["name"] = user.name
+            updates["email"] = user.email
+            updates["status"] = "En ligne"
+            updates["lastSeen"] = System.currentTimeMillis()
+            
+            // IMPORTANT: On ne remet le username par défaut QUE s'il est vide dans Firestore
+            if (currentUsername.isNullOrEmpty()) {
+                updates["username"] = user.username
+            }
+            
+            // Pareil pour l'avatar
+            if (currentAvatar.isNullOrEmpty() && !user.avatarUrl.isNullOrEmpty()) {
+                updates["avatarUrl"] = user.avatarUrl!!
+            }
+            
+            userRef.update(updates).await()
+            
+            // Mettre à jour le cache local
+            val updatedUser = existingUserDoc.toObject(User::class.java)?.copy(
+                status = "En ligne",
+                lastSeen = System.currentTimeMillis()
+            )
+            updatedUser?.let { chatDao.insertUser(it) }
+        } else {
+            // Premier enregistrement
+            userRef.set(user).await()
+            chatDao.insertUser(user)
+        }
     }
 
     suspend fun updateUserStatus(userId: String, isOnline: Boolean) {
@@ -392,6 +430,20 @@ class ChatRepository(private val chatDao: ChatDao) {
         // Update local cache
         chatDao.getChatById(chatId)?.let { chat ->
             chatDao.insertChat(chat.copy(encryptionKey = newKey))
+        }
+    }
+
+    suspend fun updateAvatarUrl(userId: String, url: String) {
+        try {
+            firestore.collection("users").document(userId)
+                .update("avatarUrl", url)
+                .await()
+            
+            chatDao.getUserById(userId)?.let { user ->
+                chatDao.insertUser(user.copy(avatarUrl = url))
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 }

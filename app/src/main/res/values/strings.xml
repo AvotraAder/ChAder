@@ -39,4 +39,6 @@
     <string name="delete">Supprimer</string>
     <string name="delete_message_confirm">Voulez-vous supprimer ce message pour tout le monde ?</string>
     <string name="message_deleted">Message supprimé</string>
+    <string name="change_profile_picture">Changer la photo de profil</string>
+    <string name="error_upload">Erreur lors de l\'importation</string>
 </resources>

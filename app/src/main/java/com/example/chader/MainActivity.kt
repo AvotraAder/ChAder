@@ -53,6 +53,7 @@ import com.example.chader.ui.screens.LoginScreen
 import com.example.chader.ui.screens.ProfileScreen
 import com.example.chader.ui.theme.ChAderTheme
 import com.example.chader.ui.viewmodel.ChatViewModel
+import com.example.chader.util.JwtUtils
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.launch
@@ -225,6 +226,21 @@ fun ChAderApp(
                                     val userEmail = user.email ?: credential.id
                                     val username = userEmail.split("@")[0].lowercase()
                                     
+                                    // Reload user to ensure profile data (like photoUrl) is synced from Google
+                                    try { user.reload().await() } catch (e: Exception) { e.printStackTrace() }
+                                    val updatedUser = FirebaseAuth.getInstance().currentUser ?: user
+                                    
+                                    // 4 sources pour la photo de profil
+                                    val jwtPhotoUrl = JwtUtils.getProfilePictureFromToken(credential.idToken)
+                                    val avatarUrl = updatedUser.photoUrl?.toString() 
+                                        ?: jwtPhotoUrl
+                                        ?: credential.profilePictureUri?.toString()
+                                        ?: updatedUser.providerData.find { it.providerId == "google.com" }?.photoUrl?.toString()
+                                    
+                                    if (avatarUrl == null) {
+                                        Toast.makeText(context, "Note: Photo de profil Google non détectée", Toast.LENGTH_SHORT).show()
+                                    }
+                                    
                                     userSessionManager.saveSession(credential.idToken, id, userName, userEmail)
                                     repository.createOrUpdateUser(
                                         User(
@@ -232,7 +248,7 @@ fun ChAderApp(
                                             name = userName,
                                             email = userEmail,
                                             username = username,
-                                            avatarUrl = credential.profilePictureUri?.toString(),
+                                            avatarUrl = avatarUrl,
                                             status = "En ligne"
                                         )
                                     )

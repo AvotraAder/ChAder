@@ -1,5 +1,6 @@
 package com.example.chader.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.consumeWindowInsets
@@ -20,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -143,13 +145,31 @@ fun HomeScreen(
                         .padding(horizontal = 28.dp, vertical = 16.dp)
                         .fillMaxWidth()
                 ) {
-                    AsyncImage(
-                        model = currentUser?.avatarUrl ?: "https://i.pravatar.cc/150",
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(64.dp)
-                            .clip(CircleShape)
-                    )
+                    if (currentUser?.avatarUrl != null) {
+                        AsyncImage(
+                            model = currentUser.avatarUrl,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(64.dp)
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(64.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primaryContainer),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = null,
+                                modifier = Modifier.size(40.dp),
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
                     Spacer(Modifier.height(12.dp))
                     Text(
                         text = currentUser?.name ?: "User",
@@ -332,13 +352,31 @@ fun HomeScreen(
                             },
                             leadingContent = {
                                 Box {
-                                    AsyncImage(
-                                        model = otherUser?.avatarUrl ?: "https://i.pravatar.cc/150",
-                                        contentDescription = null,
-                                        modifier = Modifier
-                                            .size(56.dp)
-                                            .clip(CircleShape)
-                                    )
+                                    if (otherUser?.avatarUrl != null) {
+                                        AsyncImage(
+                                            model = otherUser.avatarUrl,
+                                            contentDescription = null,
+                                            modifier = Modifier
+                                                .size(56.dp)
+                                                .clip(CircleShape),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                    } else {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(56.dp)
+                                                .clip(CircleShape)
+                                                .background(MaterialTheme.colorScheme.secondaryContainer),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Person,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(32.dp),
+                                                tint = MaterialTheme.colorScheme.onSecondaryContainer
+                                            )
+                                        }
+                                    }
                                     if (otherUser?.status == "En ligne") {
                                         Surface(
                                             modifier = Modifier

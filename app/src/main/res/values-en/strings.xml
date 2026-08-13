@@ -39,4 +39,6 @@
     <string name="delete">Delete</string>
     <string name="delete_message_confirm">Do you want to delete this message for everyone?</string>
     <string name="message_deleted">Message deleted</string>
+    <string name="change_profile_picture">Change profile picture</string>
+    <string name="error_upload">Upload error</string>
 </resources>
