@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.GetCredentialResponse
+import androidx.credentials.ClearCredentialStateRequest
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import kotlinx.coroutines.Dispatchers
@@ -16,19 +17,22 @@ class CredentialManagerHelper(private val context: Context) {
         val googleIdOption = GetGoogleIdOption.Builder()
             .setFilterByAuthorizedAccounts(false)
             .setServerClientId(webClientId)
-            .setAutoSelectEnabled(false) // Force account selection picker
+            .setAutoSelectEnabled(false)
             .build()
 
         val request = GetCredentialRequest.Builder()
             .addCredentialOption(googleIdOption)
             .build()
 
+        val result = credentialManager.getCredential(context, request)
+        handleSignIn(result)
+    }
+
+    suspend fun clearSession() {
         try {
-            val result = credentialManager.getCredential(context, request)
-            handleSignIn(result)
+            credentialManager.clearCredentialState(ClearCredentialStateRequest())
         } catch (e: Exception) {
             e.printStackTrace()
-            null
         }
     }
 

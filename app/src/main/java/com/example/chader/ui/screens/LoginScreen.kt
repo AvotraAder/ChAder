@@ -33,7 +33,7 @@ import com.example.chader.R
 @Composable
 fun LoginScreen(
     onLoginSuccess: (String, String, String) -> Unit,
-    onGoogleSignInClick: () -> Unit,
+    onGoogleSignInClick: (onComplete: () -> Unit) -> Unit,
     onSettingsClick: () -> Unit
 ) {
     var email by remember { mutableStateOf("") }
@@ -137,7 +137,7 @@ fun LoginScreen(
                 OutlinedButton(
                     onClick = {
                         isLoading = true
-                        onGoogleSignInClick()
+                        onGoogleSignInClick { isLoading = false }
                     },
                     enabled = !isLoading,
                     modifier = Modifier

@@ -215,10 +215,10 @@ fun HushApp(
                         }
                     }
                 },
-                onGoogleSignInClick = {
+                onGoogleSignInClick = { onComplete ->
                     scope.launch {
+                        val webClientId = "202231401807-opev3stqhgdnvd66570pcrakv5060ijr.apps.googleusercontent.com"
                         try {
-                            val webClientId = "202231401807-opev3stqhgdnvd66570pcrakv5060ijr.apps.googleusercontent.com"
                             val credential = credentialManagerHelper.getGoogleCredential(webClientId)
                             if (credential != null) {
                                 val firebaseCredential = GoogleAuthProvider.getCredential(credential.idToken, null)
@@ -231,20 +231,14 @@ fun HushApp(
                                     val userEmail = user.email ?: credential.id
                                     val username = userEmail.split("@")[0].lowercase()
                                     
-                                    // Reload user to ensure profile data (like photoUrl) is synced from Google
                                     try { user.reload().await() } catch (e: Exception) { e.printStackTrace() }
                                     val updatedUser = FirebaseAuth.getInstance().currentUser ?: user
                                     
-                                    // 4 sources pour la photo de profil
                                     val jwtPhotoUrl = JwtUtils.getProfilePictureFromToken(credential.idToken)
                                     val avatarUrl = updatedUser.photoUrl?.toString() 
                                         ?: jwtPhotoUrl
                                         ?: credential.profilePictureUri?.toString()
                                         ?: updatedUser.providerData.find { it.providerId == "google.com" }?.photoUrl?.toString()
-                                    
-                                    if (avatarUrl == null) {
-                                        Toast.makeText(context, "Note: Photo de profil Google non détectée", Toast.LENGTH_SHORT).show()
-                                    }
                                     
                                     userSessionManager.saveSession(credential.idToken, id, userName, userEmail)
                                     repository.createOrUpdateUser(
@@ -258,12 +252,16 @@ fun HushApp(
                                         )
                                     )
                                 }
+                                onComplete()
                             } else {
-                                Toast.makeText(context, "Échec de la récupération du compte", Toast.LENGTH_SHORT).show()
+                                onComplete()
+                                Toast.makeText(context, "Échec: Réponse vide de Google", Toast.LENGTH_SHORT).show()
                             }
                         } catch (e: Exception) {
+                            onComplete()
                             e.printStackTrace()
-                            Toast.makeText(context, "Erreur Google: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                            val errorMsg = e.message ?: e.toString()
+                            Toast.makeText(context, "Erreur Google ($webClientId): $errorMsg", Toast.LENGTH_LONG).show()
                         }
                     }
                 },
@@ -295,6 +293,7 @@ fun HushApp(
                     scope.launch {
                         userSession.userId?.let { chatViewModel.setUserStatus(it, false) }
                         FirebaseAuth.getInstance().signOut()
+                        credentialManagerHelper.clearSession()
                         userSessionManager.clearSession()
                         backStack.clear()
                         backStack.add(LoginRoute)
@@ -311,6 +310,7 @@ fun HushApp(
                     scope.launch {
                         userSession.userId?.let { chatViewModel.setUserStatus(it, false) }
                         FirebaseAuth.getInstance().signOut()
+                        credentialManagerHelper.clearSession()
                         userSessionManager.clearSession()
                         backStack.clear()
                         backStack.add(LoginRoute)
